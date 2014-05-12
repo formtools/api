@@ -9,7 +9,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.0.0-beta-20090301";
+$g_api_version = "1.0.0-beta-20090317";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -63,7 +63,7 @@ require_once("$folder/../library.php");
  */
 function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num = 1, $options = array())
 {
-	global $g_table_prefix, $LANG, $g_api_debug;
+	global $g_table_prefix, $LANG, $g_api_debug, $g_smarty;
 
 	// sanitize all incoming data
 	$form_id        = ft_sanitize($form_id);
@@ -204,11 +204,11 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
 
 	$placeholders["export_group_name"] = ft_create_slug(ft_eval_smarty_string($export_group_info["group_name"]));
 	$placeholders["export_group_type"] = ft_create_slug(ft_eval_smarty_string($export_type_info["export_type_name"]));
-	$placeholders["filename"] = ft_eval_smarty_string($export_type_info["filename"], $placeholders);
+	$placeholders["filename"] = ft_eval_smarty_string($export_type_info["filename"], $placeholders, "", $g_smarty->plugins_dir);
 
 	$template = $export_type_info["export_type_smarty_template"];
 	$placeholders["export_type_name"] = $export_type_info["export_type_name"];
-	$export_type_smarty_template = ft_eval_smarty_string($template, $placeholders);
+	$export_type_smarty_template = ft_eval_smarty_string($template, $placeholders, "", $g_smarty->plugins_dir);
 
 
 	// if we're not displaying all results on the single page, generate the pagination HTML
@@ -803,10 +803,6 @@ function ft_api_process_form($params)
 		    	//  list($success, $message, $filename) = ft_upload_submission_image($form_id, $submission_id, $field_id, $fileinfo);
 		    }
 		  }
-
-		  // if this submission was just finalized, send any emails attached to the on_submission trigger
-		  if ($is_finalized == "yes")
-		    ft_send_emails("on_submission", $form_id, $submission_id);
 	  }
 
 	  // store all the info in sessions
@@ -851,9 +847,19 @@ function ft_api_process_form($params)
     }
   }
 
+
   // finally, redirect to the next page. Only do so if the user didn't just delete a file or fail a CAPTCHA test
   if ($passes_captcha && !empty($next_page) && !$is_deleting_file)
   {
+  	// if the user wasn't putting through a test submission or initializing the form, we can send safely
+  	// send emails at this juncture, but ONLY if it was just finalized
+    if ($form_id != "test" && $submission_id != "test" && !isset($_SESSION[$namespace]["form_tools_initialize_form"]))
+    {
+      // send any emails attached to the on_submission trigger
+	    if ($is_finalized == "yes")
+		    ft_send_emails("on_submission", $form_id, $submission_id);
+    }
+
     header("location: $next_page");
     exit;
   }
