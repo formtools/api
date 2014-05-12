@@ -9,7 +9,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.0.0-beta-20090908";
+$g_api_version = "1.0.0";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -464,7 +464,7 @@ function ft_api_clear_form_sessions($namespace = "form_tools_form")
  *               of a page (usually the FIRST page in the form sequence) where the user will be redirected to if
  *               they didn't start the form from the first page. It ensures the form submission gets created &
  *               submitted properly.
- *        "may_update_finalized_submissions": true / false (false by default)
+ *        "may_update_finalized_submissions": true / false (true by default)
  *        "namespace": if you specified a custom namespace for ft_api_init_form_page, for where the form values will
  *               be stored temporarily in sessions, you need to pass that same value to this function - otherwise
  *               it won't be able to retrieve the form and submission ID
@@ -568,7 +568,7 @@ function ft_api_process_form($params)
   $file_data          = isset($params["file_data"]) ? $params["file_data"] : array();
   $finalize           = isset($params["finalize"]) ? $params["finalize"] : false;
   $namespace          = isset($params["namespace"]) ? $params["namespace"] : "form_tools_form";
-  $may_update_finalized_submissions = isset($params["may_update_finalized_submissions"]) ? $params["may_update_finalized_submissions"] : false;
+  $may_update_finalized_submissions = isset($params["may_update_finalized_submissions"]) ? $params["may_update_finalized_submissions"] : true;
 
 
   // if we're in test mode, we don't do anything with the database - just store the fields in
@@ -798,10 +798,6 @@ function ft_api_process_form($params)
               $_SESSION[$namespace][$file_form_field_name] = $curr_file_info;
             }
           }
-
-          // TODO assumption: if the field is set as an image, the Image Manager is enabled
-          //else if ($field_type == "image")
-          //  list($success, $message, $filename) = ft_upload_submission_image($form_id, $submission_id, $field_id, $fileinfo);
         }
       }
     }
@@ -851,7 +847,8 @@ function ft_api_process_form($params)
   {
     // if the user wasn't putting through a test submission or initializing the form, we can send safely
     // send emails at this juncture, but ONLY if it was just finalized
-    if ($form_id != "test" && $submission_id != "test" && !isset($_SESSION[$namespace]["form_tools_initialize_form"]))
+    if ($form_id != "test" && $submission_id != "test" && !isset($_SESSION[$namespace]["form_tools_initialize_form"])
+      && !isset($form_data["form_tools_ignore_submission"]))
     {
       // send any emails attached to the on_submission trigger
       if ($is_finalized == "yes")
@@ -1578,4 +1575,54 @@ function ft_api_display_post_form_captcha_error($message = "")
   }
 
   $_SESSION["form_tools_form_data"]["api_recaptcha_error"] = "";
+}
+
+
+/**
+ * Returns all information about a submission. N.B. Would have been nice to have made this just a
+ * wrapper for ft_get_submission_info, but that function contains hooks. Need to revise all core
+ * code to allow external calls to optionally avoid any hook calls.
+ *
+ * @param integer $form_id
+ * @param integer $submission_id
+ */
+function ft_api_get_submission($form_id, $submission_id)
+{
+  global $g_table_prefix, $g_api_debug;
+
+  // confirm the form is valid
+  if (!ft_check_form_exists($form_id))
+  {
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 405, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 405);
+  }
+
+  if (!is_numeric($submission_id))
+  {
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 406, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 406);
+  }
+
+  // get the form submission info
+  $submission_info = mysql_query("
+     SELECT *
+     FROM   {$g_table_prefix}form_{$form_id}
+     WHERE  submission_id = $submission_id
+              ");
+
+  $submission = mysql_fetch_assoc($submission_info);
+
+  return $submission;
 }
