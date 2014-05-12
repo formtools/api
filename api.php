@@ -9,14 +9,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_debug = true;
-$g_api_recaptcha_public_key  = "";
-$g_api_recaptcha_private_key = "";
-
-
-// ------------------------------------------------------------------------------------------------
-// don't edit anything below here!
-$g_api_version = "1.0.0-beta-20090211";
+$g_api_version = "1.0.0-beta-20090301";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -382,11 +375,13 @@ function ft_api_create_blank_submission($form_id, $finalized = false, $default_v
  */
 function ft_api_init_form_page($form_id = "", $mode = "live", $namespace = "form_tools_form")
 {
+	global $g_api_header_charset;
+
 	if (!isset($_SESSION))
 	{
 		session_start();
 		header("Cache-control: private");
-		header("Content-Type: text/html; charset=utf-8");
+		header("Content-Type: text/html; charset=$g_api_header_charset");
 	}
 
   if (!isset($_SESSION[$namespace]) || empty($_SESSION[$namespace]))
