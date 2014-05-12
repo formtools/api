@@ -9,7 +9,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.0.0-beta-20090317";
+$g_api_version = "1.0.0-beta-20090404";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -811,7 +811,6 @@ function ft_api_process_form($params)
 	  	$_SESSION[$namespace][$field_name] = $value;
   }
 
-
   // was there a reCAPTCHA response? If so, a recaptcha was just submitted, check it was entered correctly
   $passes_captcha = true;
   if ($has_captcha)
@@ -847,8 +846,6 @@ function ft_api_process_form($params)
     }
   }
 
-
-  // finally, redirect to the next page. Only do so if the user didn't just delete a file or fail a CAPTCHA test
   if ($passes_captcha && !empty($next_page) && !$is_deleting_file)
   {
   	// if the user wasn't putting through a test submission or initializing the form, we can send safely
@@ -1443,4 +1440,87 @@ function ft_api_display_captcha()
   }
 
   echo recaptcha_get_html($g_api_recaptcha_public_key, $g_api_recaptcha_error);
+}
+
+
+/**
+ * This function checks to see if a submission is unique - based on whatever criteria you require
+ * for your test case.
+ *
+ * @param integer $form_id
+ * @param array $criteria a hash of whatever criteria is need to denote uniqueness, where the key is the
+ *   database column name and the value is the current value being tested. For instance, if you wanted to check
+ *   that no-one has submitted a form with a particular email address, you could pass
+ *   array("email" => "myemail@whatever.com) as the second parameter (where "email" is the database column name).
+ */
+function ft_api_check_submission_is_unique($form_id, $criteria)
+{
+	global $g_api_debug, $g_table_prefix;
+
+	// confirm the form is valid
+	if (!ft_check_form_exists($form_id))
+	{
+		if ($g_api_debug)
+		{
+		  $page_vars = array("message_type" => "error", "error_code" => 550, "error_type" => "user");
+		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+		  exit;
+		}
+		else
+		  return array(false, 550);
+	}
+
+  if (!is_array($criteria))
+  {
+		if ($g_api_debug)
+		{
+	  	$page_vars = array("message_type" => "error", "error_code" => 551, "error_type" => "user");
+		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+		  exit;
+		}
+		else
+		  return array(false, 551);
+	}
+
+  $where_clauses = array();
+	while (list($col_name, $value) = each($criteria))
+	{
+		if (empty($col_name))
+		{
+			if ($g_api_debug)
+			{
+				$page_vars = array("message_type" => "error", "error_code" => 552, "error_type" => "user");
+			  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+			  exit;
+			}
+			else
+			  return array(false, 552);
+		}
+
+    $where_clauses[] = "$col_name = '" . ft_sanitize($value) . "'";
+	}
+
+  if (empty($where_clauses))
+  {
+  	if ($g_api_debug)
+		{
+	  	$page_vars = array("message_type" => "error", "error_code" => 553, "error_type" => "user");
+		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+		  exit;
+		}
+		else
+		  return array(false, 553);
+  }
+
+  $where_clause = "WHERE " . join(" AND ", $where_clauses);
+
+  $query = mysql_query("
+    SELECT count(*) as c
+    FROM {$g_table_prefix}form_{$form_id}
+    $where_clause
+    ");
+
+  $result = mysql_fetch_assoc($query);
+
+  return $result["c"] == 0;
 }
