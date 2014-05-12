@@ -7,7 +7,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.1.3";
+$g_api_version = "1.1.4";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -77,7 +77,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 400, "error_type" => "user");
-      ft_display_page("../../error.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -93,7 +93,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 401, "error_type" => "user");
-      ft_display_page("../../error.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -108,7 +108,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 402, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -123,7 +123,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 403, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -280,7 +280,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
       if ($g_api_debug)
       {
         $page_vars = array("message_type" => "error", "error_code" => 404, "error_type" => "user");
-        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        ft_display_page("error.tpl", $page_vars);
         exit;
       }
       else
@@ -344,7 +344,7 @@ function ft_api_create_blank_submission($form_id, $finalized = false, $default_v
   if (!ft_check_form_exists($form_id))
   {
     $page_vars = array("message_type" => "error", "error_code" => 500, "error_type" => "user");
-    ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+    ft_display_page("error.tpl", $page_vars);
     exit;
   }
 
@@ -382,7 +382,7 @@ function ft_api_create_blank_submission($form_id, $finalized = false, $default_v
       "error_type" => "user",
       "debugging" => mysql_error()
     );
-    ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+    ft_display_page("error.tpl", $page_vars);
     exit;
   }
 }
@@ -456,7 +456,7 @@ function ft_api_init_form_page($form_id = "", $mode = "live", $namespace = "form
 
        default:
          $page_vars = array("message_type" => "error", "error_code" => 200, "error_type" => "user");
-         ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+         ft_display_page("error.tpl", $page_vars);
          exit;
          break;
     }
@@ -513,7 +513,7 @@ function ft_api_clear_form_sessions($namespace = "form_tools_form")
  * @return mixed ordinarily, this function will just redirect the user to whatever URL is specified in the
  *        "next_page" key. But if that value isn't set, it returns an array:
  *               [0] success / false
- * 							 [1] if failure, the API Error Code, otherwise blank
+ *               [1] if failure, the API Error Code, otherwise blank
  */
 function ft_api_process_form($params)
 {
@@ -525,8 +525,8 @@ function ft_api_process_form($params)
   {
     if ($g_api_debug)
     {
-       $page_vars = array("message_type" => "error", "error_code" => 306, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      $page_vars = array("message_type" => "error", "error_code" => 306, "error_type" => "user");
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -563,21 +563,22 @@ function ft_api_process_form($params)
   {
     if ($g_api_debug)
     {
-       $page_vars = array("message_type" => "error", "error_code" => 305, "error_type" => "user",
+      $page_vars = array("message_type" => "error", "error_code" => 305, "error_type" => "user",
         "debugging" => "{$LANG["phrase_submission_id"]}: $submission_id");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
       return array(false, 305);
   }
 
+
   // extract the submission ID and form ID from sessions
-  $form_data     = $params["form_data"];
-  $form_id       = isset($_SESSION[$namespace]["form_tools_form_id"]) ? $_SESSION[$namespace]["form_tools_form_id"] : "";
-  $submission_id = isset($_SESSION[$namespace]["form_tools_submission_id"]) ? $_SESSION[$namespace]["form_tools_submission_id"] : "";
-  $has_captcha   = isset($form_data["recaptcha_response_field"]) ? true : false;
-  $no_sessions_url    = isset($params["no_sessions_url"]) ? $params["no_sessions_url"] : false;
+  $form_data       = $params["form_data"];
+  $form_id         = isset($_SESSION[$namespace]["form_tools_form_id"]) ? $_SESSION[$namespace]["form_tools_form_id"] : "";
+  $submission_id   = isset($_SESSION[$namespace]["form_tools_submission_id"]) ? $_SESSION[$namespace]["form_tools_submission_id"] : "";
+  $has_captcha     = isset($form_data["recaptcha_response_field"]) ? true : false;
+  $no_sessions_url = isset($params["no_sessions_url"]) ? $params["no_sessions_url"] : false;
 
   if (!isset($_GET["ft_sessions_url_override"]) && (empty($form_id) || empty($submission_id)))
   {
@@ -591,7 +592,7 @@ function ft_api_process_form($params)
       if ($g_api_debug)
       {
         $page_vars = array("message_type" => "error", "error_code" => 300, "error_type" => "user");
-        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        ft_display_page("error.tpl", $page_vars);
         exit;
       }
       else
@@ -647,7 +648,7 @@ function ft_api_process_form($params)
       if ($g_api_debug)
       {
         $page_vars = array("message_type" => "error", "error_code" => 301, "error_type" => "user");
-        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        ft_display_page("error.tpl", $page_vars);
         exit;
       }
       else
@@ -661,7 +662,7 @@ function ft_api_process_form($params)
       {
         $page_vars = array("message_type" => "error", "error_code" => 302, "error_type" => "user",
           "debugging" => "{$LANG["phrase_submission_id"]}: $submission_id");
-        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        ft_display_page("error.tpl", $page_vars);
         exit;
       }
       else
@@ -681,7 +682,7 @@ function ft_api_process_form($params)
       if ($g_api_debug)
       {
         $page_vars = array("message_type" => "error", "error_code" => 303, "error_type" => "user");
-        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        ft_display_page("error.tpl", $page_vars);
         exit;
       }
       else
@@ -809,7 +810,7 @@ function ft_api_process_form($params)
           $page_vars = array("message_type" => "error", "error_code" => 304, "error_type" => "system",
             "debugging"=> "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
                 ": <i>" . nl2br($query) . "</i> " .  mysql_error());
-          ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+          ft_display_page("error.tpl", $page_vars);
           exit;
         }
         else
@@ -985,7 +986,7 @@ function ft_api_login($info)
      if ($g_api_debug)
      {
       $page_vars = array("message_type" => "error", "error_code" => 1000, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
      }
      else
@@ -997,7 +998,7 @@ function ft_api_login($info)
      if ($g_api_debug)
      {
       $page_vars = array("message_type" => "error", "error_code" => 1004, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
      }
      else
@@ -1009,7 +1010,7 @@ function ft_api_login($info)
      if ($g_api_debug)
      {
       $page_vars = array("message_type" => "error", "error_code" => 1001, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
      }
      else
@@ -1021,7 +1022,7 @@ function ft_api_login($info)
      if ($g_api_debug)
      {
       $page_vars = array("message_type" => "error", "error_code" => 1002, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
      }
      else
@@ -1033,7 +1034,7 @@ function ft_api_login($info)
      if ($g_api_debug)
      {
       $page_vars = array("message_type" => "error", "error_code" => 1003, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
      }
      else
@@ -1147,7 +1148,7 @@ function ft_api_create_client_account($account_info)
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_codes" => $error_codes);
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1188,7 +1189,7 @@ function ft_api_create_client_account($account_info)
     {
       $page_vars = array("message_type" => "error", "error_code" => 709, "error_type" => "user",
         "debugging" => "Failed query in <b>" . __FUNCTION__ . "</b>: <i>$query</i> " . mysql_error());
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1241,7 +1242,7 @@ function ft_api_update_client_account($account_id, $info)
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 900, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1252,7 +1253,7 @@ function ft_api_update_client_account($account_id, $info)
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 901, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1299,7 +1300,7 @@ function ft_api_update_client_account($account_id, $info)
       $page_vars = array("message_type" => "error", "error_code" => 902, "error_type" => "user",
           "debugging"=> "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
               ": <i>" . nl2br($query) . "</i><br /> " .  mysql_error());
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1337,7 +1338,7 @@ function ft_api_delete_client_account($account_id)
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 800, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1348,7 +1349,7 @@ function ft_api_delete_client_account($account_id)
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 801, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1379,7 +1380,7 @@ function ft_api_delete_unfinalized_submissions($form_id, $delete_all = false)
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 650, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1459,7 +1460,7 @@ function ft_api_display_captcha()
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 600, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1492,7 +1493,7 @@ function ft_api_check_submission_is_unique($form_id, $criteria, $current_submiss
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 550, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1504,7 +1505,7 @@ function ft_api_check_submission_is_unique($form_id, $criteria, $current_submiss
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 551, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1519,7 +1520,7 @@ function ft_api_check_submission_is_unique($form_id, $criteria, $current_submiss
       if ($g_api_debug)
       {
         $page_vars = array("message_type" => "error", "error_code" => 552, "error_type" => "user");
-        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        ft_display_page("error.tpl", $page_vars);
         exit;
       }
       else
@@ -1534,7 +1535,7 @@ function ft_api_check_submission_is_unique($form_id, $criteria, $current_submiss
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 553, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1559,7 +1560,7 @@ function ft_api_check_submission_is_unique($form_id, $criteria, $current_submiss
   else
   {
     $page_vars = array("message_type" => "error", "error_code" => 554, "error_type" => "user");
-    ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+    ft_display_page("error.tpl", $page_vars);
     exit;
   }
 
@@ -1628,7 +1629,7 @@ function ft_api_get_submission($form_id, $submission_id)
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 405, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
@@ -1640,7 +1641,7 @@ function ft_api_get_submission($form_id, $submission_id)
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 406, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("error.tpl", $page_vars);
       exit;
     }
     else
