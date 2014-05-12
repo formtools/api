@@ -9,7 +9,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.0.0-beta-20090614";
+$g_api_version = "1.0.0-beta-20090815";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -632,6 +632,11 @@ function ft_api_process_form($params)
 	  // check to see if this form has been disabled
 	  if ($form_info["is_active"] == "no")
 	  {
+	  	if (isset($form_data["form_tools_inactive_form_redirect_url"]))
+	  	{
+	  	  header("location: {$form_data["form_tools_inactive_form_redirect_url"]}");
+	  	  exit;
+	  	}
   		if ($g_api_debug)
   		{
 		  	$page_vars = array("message_type" => "error", "error_code" => 303, "error_type" => "user");
@@ -1403,7 +1408,6 @@ function ft_api_delete_unfinalized_submissions($form_id, $delete_all = false)
 }
 
 
-
 /**
  * Displays a captcha in your form pages, using the recaptcha service (http://recaptcha.net). Requires
  * you to have set up an account with them for this current website.
@@ -1537,23 +1541,23 @@ function ft_api_start_sessions()
 
 
 /**
- * This function was provided to allow POST form users to include a reCAPTCHA in their form. This is 
- * used to display an error message in the event of a failed attempt.  
+ * This function was provided to allow POST form users to include a reCAPTCHA in their form. This is
+ * used to display an error message in the event of a failed attempt.
  *
- * @param string $message the message to output if there was a problem with the CAPTCHA contents.  
+ * @param string $message the message to output if there was a problem with the CAPTCHA contents.
  */
 function ft_api_display_post_form_captcha_error($message = "")
 {
   if (!isset($_SESSION["form_tools_form_data"]))
 	  return;
-	
+
   if (isset($_SESSION["form_tools_form_data"]["api_recaptcha_error"]) && !empty($_SESSION["form_tools_form_data"]["api_recaptcha_error"]))
 	{
 	  if ($message)
 		  echo $message;
 		else
-		  echo "Sorry, the CAPTCHA (image verification) was entered incorrectly. Please try again."; 
+		  echo "Sorry, the CAPTCHA (image verification) was entered incorrectly. Please try again.";
 	}
-	
+
 	$_SESSION["form_tools_form_data"]["api_recaptcha_error"] = "";
 }
