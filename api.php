@@ -4,12 +4,12 @@
  * The Form Tools API. For more information, see the online documentation:
  * http://docs.formtools.org/api/
  *
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.0.0";
+$g_api_version = "1.0.1";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -468,6 +468,10 @@ function ft_api_clear_form_sessions($namespace = "form_tools_form")
  *        "namespace": if you specified a custom namespace for ft_api_init_form_page, for where the form values will
  *               be stored temporarily in sessions, you need to pass that same value to this function - otherwise
  *               it won't be able to retrieve the form and submission ID
+ *        "send_emails": (boolean). By default, Form Tools will trigger any emails that have been attached to the
+ *               "on submission" event ONLY when the submission is finalized (finalize=true). This setting provides
+ *               you with direct control over when the emails get sent. If not specified, will use the default
+ *               behaviour.
  *
  * @return mixed ordinarily, this function will just redirect the user to whatever URL is specified in the
  *        "next_page" key. But if that value isn't set, it returns an array:
@@ -846,12 +850,15 @@ function ft_api_process_form($params)
   if ($passes_captcha && !empty($next_page) && !$is_deleting_file)
   {
     // if the user wasn't putting through a test submission or initializing the form, we can send safely
-    // send emails at this juncture, but ONLY if it was just finalized
+    // send emails at this juncture, but ONLY if it was just finalized OR if the send_emails parameter
+    // allows for it
     if ($form_id != "test" && $submission_id != "test" && !isset($_SESSION[$namespace]["form_tools_initialize_form"])
       && !isset($form_data["form_tools_ignore_submission"]))
     {
       // send any emails attached to the on_submission trigger
-      if ($is_finalized == "yes")
+      if (isset($params["send_emails"]) && $params["send_emails"] === true)
+    	  ft_send_emails("on_submission", $form_id, $submission_id);
+      else if ($is_finalized == "yes" && (!isset($params["send_emails"]) || $params["send_emails"] !== false))
         ft_send_emails("on_submission", $form_id, $submission_id);
     }
 
@@ -946,7 +953,7 @@ function ft_api_load_field($field_name, $session_name, $default_value)
  */
 function ft_api_login($info)
 {
-  global $g_root_url, $g_table_prefix, $LANG;
+  global $g_root_url, $g_table_prefix, $LANG, $g_api_debug;
 
   $username = ft_sanitize($info["username"]);
   $password = isset($info["password"]) ? ft_sanitize($info["password"]) : "";
@@ -1028,6 +1035,18 @@ function ft_api_login($info)
 
   ft_cache_account_menu($account_info["account_id"]);
 
+  // if this is an administrator, build and cache the upgrade link and ensure the API version is up to date
+  if ($account_info["account_type"] == "admin")
+  {
+    ft_update_api_version();
+    ft_build_and_cache_upgrade_info();
+  }
+
+  // for clients, store the forms & form Views that they are allowed to access
+  if ($account_info["account_type"] == "client")
+    $_SESSION["ft"]["permissions"] = ft_get_client_form_views($account_info["account_id"]);
+
+
   // redirect the user to whatever login page they specified in their settings
   if (isset($info["auto_redirect_after_login"]) && $info["auto_redirect_after_login"])
   {
@@ -1036,16 +1055,16 @@ function ft_api_login($info)
       session_write_close();
       header("Location: $login_url");
       exit;
-     }
-     else
-     {
+    }
+    else
+    {
       $login_url = ft_construct_page_url($account_info["login_page"]);
       $login_url = "$g_root_url{$login_url}";
 
       session_write_close();
       header("Location: $login_url");
       exit;
-     }
+    }
   }
 
   return array(true, "");
