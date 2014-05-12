@@ -4,12 +4,12 @@
  * The Form Tools API. For more information, see the online documentation:
  * http://docs.formtools.org/api/
  *
- * @version 1.0.1
+ * *** This version is compatible with Form Tools Core 2.1.0 or later. ***
  */
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.0.1";
+$g_api_version = "1.1.0";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -135,10 +135,12 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
 
   // okay, now lets figure out what needs to be displayed & rendered
   $form_info = ft_get_form($form_id);
+  $form_fields = ft_get_form_fields($form_id, array("include_field_type_info" => true, "include_field_settings" => true));
   $view_info = ft_get_view($view_id);
   $export_type_info = exp_get_export_type($export_type_id);
   $export_group_id = $export_type_info["export_group_id"];
   $export_group_info = exp_get_export_group($export_group_id);
+
 
   // number of submissions per page (an integer or "all")
   $num_per_page = $view_info["num_submissions_per_page"];
@@ -149,21 +151,56 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
   if (isset($options["order"]))
     $order = $options["order"];
 
-
-  // figure out which columns to show
+  $display_fields = array();
+  $columns = "all";
   if (isset($options["show_columns_only"]) && $options["show_columns_only"])
   {
-    $display_fields = ft_get_submission_field_info($view_info["fields"]);
+    $columns = array();
+    foreach ($view_info["columns"] as $view_field_info)
+    {
+      $curr_field_id = $view_field_info["field_id"];
+      foreach ($form_fields as $form_field_info)
+      {
+        if ($form_field_info["field_id"] != $curr_field_id)
+          continue;
 
-    $columns  = array();
-    foreach ($display_fields as $field_info)
-      $columns[] = $field_info["col_name"];
+        $display_fields[] = array_merge($form_field_info, $view_field_info);
+        $columns[] = $form_field_info["col_name"];
+      }
+    }
   }
   else
   {
-    $columns = "all";
-    $display_fields = ft_get_submission_field_info($view_info["fields"], true);
+    foreach ($view_info["fields"] as $view_field_info)
+    {
+      $curr_field_id = $view_field_info["field_id"];
+      foreach ($form_fields as $form_field_info)
+      {
+        if ($form_field_info["field_id"] != $curr_field_id)
+          continue;
+
+        $display_fields[] = array_merge($form_field_info, $view_field_info);
+      }
+    }
   }
+
+  /*
+  $columns = "all";
+  if (isset($options["show_columns_only"]) && $options["show_columns_only"])
+  {
+    $columns = array();
+    foreach ($view_info["columns"] as $view_col_info)
+    {
+      foreach ($display_fields as $field_info)
+      {
+        if ($field_info["field_id"] == $view_col_info["field_id"])
+        {
+          $columns[] = $field_info["col_name"];
+        }
+      }
+    }
+  }
+  */
 
   $submission_ids = array();
   if (isset($options["submission_ids"]))
@@ -185,13 +222,17 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
   $placeholders["export_group_id"] = $export_group_id;
   $placeholders["export_type_id"] = $export_type_id;
   $placeholders["export_group_results"] = "all";
-  $placeholders["same_page"] = $_SERVER["PHP_SELF"];
+  $placeholders["same_page"] = ft_get_clean_php_self();
   $placeholders["display_fields"] = $display_fields;
   $placeholders["submissions"]    = $results_info["search_rows"];
   $placeholders["num_results"]    = $results_info["search_num_results"];
   $placeholders["view_num_results"] = $results_info["view_num_results"];
   $placeholders["form_info"] = $form_info;
   $placeholders["view_info"] = $view_info;
+  $placeholders["field_types"] = ft_get_field_types(true);
+  $placeholders["settings"] = $settings;
+
+  // ...
   $placeholders["date_format"] = $settings["default_date_format"];
   $placeholders["timezone_offset"] = $settings["timezone_offset"];
 
@@ -250,7 +291,6 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
       break;
   }
 
-
   if (isset($options["return_as_string"]) && $options["return_as_string"])
     return array(true, $html);
   else
@@ -260,7 +300,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
 
 /**
  * Displays an individual form submission. Note: this function is NOT compatible with tabs - it won't render the
- * information with the tabset defined.
+ * information with whatever tabs were defined.
  *
  * @param integer $form_id
  * @param integer $submission_id
@@ -271,7 +311,7 @@ function ft_api_show_submission($form_id, $view_id, $export_type_id, $submission
 {
   $options = array(
     "submission_ids" => $submission_id,
-    "num_per_page" => "all" // prevents the pagination showing up
+    "num_per_page"   => "all" // prevents the pagination showing up
   );
   ft_api_show_submissions($form_id, $view_id, $export_type_id, "", $options);
 }
@@ -385,9 +425,9 @@ function ft_api_init_form_page($form_id = "", $mode = "live", $namespace = "form
     $_SESSION[$namespace] = array();
 
     // here, form_id should have been set: this is the FIRST page of (potentially) a multi-page form
-     switch ($mode)
-     {
-       case "test":
+    switch ($mode)
+    {
+      case "test":
         $_SESSION[$namespace]["form_tools_form_id"]       = "test";
         $_SESSION[$namespace]["form_tools_submission_id"] = "test";
         break;
@@ -400,9 +440,9 @@ function ft_api_init_form_page($form_id = "", $mode = "live", $namespace = "form
          if (empty($form_id))
            return $_SESSION[$namespace];
          $_SESSION[$namespace]["form_tools_form_id"]       = $form_id;
-        $_SESSION[$namespace]["form_tools_submission_id"] = "initializing";
-        $_SESSION[$namespace]["form_tools_initialize_form"] = 1;
-        break;
+         $_SESSION[$namespace]["form_tools_submission_id"] = "initializing";
+         $_SESSION[$namespace]["form_tools_initialize_form"] = 1;
+         break;
 
        case "live":
          // if form ID is blank here, chances are a user is just returning to a multi-page form page
@@ -412,15 +452,15 @@ function ft_api_init_form_page($form_id = "", $mode = "live", $namespace = "form
          if (empty($form_id))
            return $_SESSION[$namespace];
 
-        $submission_id = ft_api_create_blank_submission($form_id);
-        $_SESSION[$namespace]["form_tools_form_id"]       = $form_id;
-        $_SESSION[$namespace]["form_tools_submission_id"] = $submission_id;
-        break;
+         $submission_id = ft_api_create_blank_submission($form_id);
+         $_SESSION[$namespace]["form_tools_form_id"]       = $form_id;
+         $_SESSION[$namespace]["form_tools_submission_id"] = $submission_id;
+         break;
 
        default:
-        $page_vars = array("message_type" => "error", "error_code" => 200, "error_type" => "user");
-        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-        exit;
+         $page_vars = array("message_type" => "error", "error_code" => 200, "error_type" => "user");
+         ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+         exit;
          break;
     }
   }
@@ -651,34 +691,33 @@ function ft_api_process_form($params)
         return array(false, 303);
     }
 
-    // NOW we sanitize the data (i.e. get it ready for the DB query)
+    // now we sanitize the data (i.e. get it ready for the DB query)
     $form_data = ft_sanitize($form_data);
 
-    extract(ft_process_hooks("start", compact("form_info", "form_id", "form_data"), array("form_data")), EXTR_OVERWRITE);
-
+    extract(ft_process_hook_calls("start", compact("form_info", "form_id", "form_data"), array("form_data")), EXTR_OVERWRITE);
 
     // get a list of the custom form fields (i.e. non-system) for this form
-    $form_fields = ft_get_form_fields($form_id);
+    $form_fields = ft_get_form_fields($form_id, array("include_field_type_info" => true));
 
     $custom_form_fields = array();
     foreach ($form_fields as $field_info)
     {
-      $field_id    = $field_info["field_id"];
-      $field_name  = $field_info["field_name"];
-      $col_name    = $field_info["col_name"];
-      $field_title = $field_info["field_title"];
-      $field_type  = $field_info["field_type"];
+      $is_system_field = $field_info["is_system_field"];
+      $field_name      = $field_info["field_name"];
 
       // ignore system fields
-      if ($field_type == "system")
+      if ($is_system_field == "yes")
         continue;
 
       $custom_form_fields[$field_name] = array(
-        "field_id" => $field_id,
-        "col_name" => $col_name,
-        "field_title" => $field_title,
-        "field_type" => $field_type
-          );
+        "field_id"    => $field_info["field_id"],
+        "col_name"    => $field_info["col_name"],
+        "field_title" => $field_info["field_title"],
+        "include_on_redirect" => $field_info["include_on_redirect"],
+        "field_type_id" => $field_info["field_type_id"],
+        "is_date_field" => $field_info["is_date_field"],
+        "is_file_field" => $field_info["is_file_field"]
+      );
     }
 
     // now examine the contents of the POST/GET submission and get a list of those fields
@@ -688,9 +727,13 @@ function ft_api_process_form($params)
     {
       if (array_key_exists($form_field, $custom_form_fields))
       {
-        $col_name = $custom_form_fields[$form_field]["col_name"];
-        $cleaned_value = $value;
+        $curr_form_field = $custom_form_fields[$form_field];
 
+        // ignore file fields - they're handled separately
+        if ($curr_form_field["is_file_field"] == "yes")
+          continue;
+
+        $cleaned_value = $value;
         if (is_array($value))
         {
           if ($form_info["submission_strip_tags"] == "yes")
@@ -699,7 +742,7 @@ function ft_api_process_form($params)
               $value[$i] = strip_tags($value[$i]);
           }
 
-          $cleaned_value = join("$g_multi_val_delimiter", $value);
+          $cleaned_value = implode("$g_multi_val_delimiter", $value);
         }
         else
         {
@@ -707,7 +750,7 @@ function ft_api_process_form($params)
             $cleaned_value = strip_tags($value);
         }
 
-        $valid_form_fields[$col_name] = "'$cleaned_value'";
+        $valid_form_fields[$curr_form_field["col_name"]] = "'$cleaned_value'";
       }
     }
 
@@ -739,7 +782,7 @@ function ft_api_process_form($params)
       }
       else
       {
-        // only update the is_finalized setting if $may_update_finalized_submissions === false &&
+        // only update the is_finalized setting if $may_update_finalized_submissions === false
         if (!$finalize && $may_update_finalized_submissions)
           $is_finalized_clause = "";
         else
@@ -754,7 +797,6 @@ function ft_api_process_form($params)
           WHERE  submission_id = $submission_id
             ";
       }
-
 
       // only process the query if the form_tools_ignore_submission key isn't defined
       if (!mysql_query($query))
@@ -771,39 +813,8 @@ function ft_api_process_form($params)
           return array(false, 304);
       }
 
-
-      // now the submission exists in the database, upload any files that were included
-      while (list($file_form_field_name, $fileinfo) = each($file_data))
-      {
-        if (empty($fileinfo["name"]))
-          continue;
-
-        if (array_key_exists($file_form_field_name, $custom_form_fields))
-        {
-          $field_id   = $custom_form_fields[$file_form_field_name]["field_id"];
-          $field_type = $custom_form_fields[$file_form_field_name]["field_type"];
-
-          if ($field_type == "file")
-          {
-            list($success, $message, $filename) = ft_upload_submission_file($form_id, $submission_id, $field_id, $fileinfo);
-
-            // if the file upload was successful, store the file information in sessions. The information is
-            // stored as a hash with the following keys: "filename", "file_upload_dir", "file_upload_url"
-            if ($success)
-            {
-              $extended_field_info = ft_get_extended_field_settings($field_id);
-
-              $curr_file_info = array(
-                "filename" => $filename,
-                "file_upload_dir" => $extended_field_info["file_upload_dir"],
-                "file_upload_url" => $extended_field_info["file_upload_url"]
-                  );
-
-              $_SESSION[$namespace][$file_form_field_name] = $curr_file_info;
-            }
-          }
-        }
-      }
+      // used for uploading files
+      extract(ft_process_hook_calls("after_update", compact("form_id", "submission_id"), array()), EXTR_OVERWRITE);
     }
 
     // store all the info in sessions
@@ -857,7 +868,7 @@ function ft_api_process_form($params)
     {
       // send any emails attached to the on_submission trigger
       if (isset($params["send_emails"]) && $params["send_emails"] === true)
-    	  ft_send_emails("on_submission", $form_id, $submission_id);
+        ft_send_emails("on_submission", $form_id, $submission_id);
       else if ($is_finalized == "yes" && (!isset($params["send_emails"]) || $params["send_emails"] !== false))
         ft_send_emails("on_submission", $form_id, $submission_id);
     }
@@ -898,7 +909,6 @@ function ft_api_display_image_field($params)
 
   $field_name = $params["field_name"];
   $namespace = isset($params["namespace"]) ? $params["namespace"] : "form_tools_form";
-
 
   // if an image hasn't already been uploaded through this field, do nothing
   if (!isset($_SESSION[$namespace][$field_name]) || !is_array($_SESSION[$namespace][$field_name]) ||
@@ -1157,7 +1167,6 @@ function ft_api_create_client_account($account_info)
   $logout_url       = (isset($account_info["logout_url"])) ? $account_info["logout_url"] : $settings["default_logout_url"];
   $theme            = (isset($account_info["theme"])) ? $account_info["theme"] : $settings["default_theme"];
   $menu_id          = (isset($account_info["menu_id"])) ? $account_info["menu_id"] : $settings["default_client_menu_id"];
-
 
   // first, insert the record into the accounts table. This contains all the settings common to ALL
   // accounts (including the administrator and any other future account types)
