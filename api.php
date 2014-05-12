@@ -3,13 +3,11 @@
 /**
  * The Form Tools API. For more information, see the online documentation:
  * http://docs.formtools.org/api/
- *
- * *** This version is compatible with Form Tools Core 2.1.0 or later. ***
  */
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.1.0";
+$g_api_version = "1.1.1";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -700,8 +698,10 @@ function ft_api_process_form($params)
     $form_fields = ft_get_form_fields($form_id, array("include_field_type_info" => true));
 
     $custom_form_fields = array();
+    $file_fields = array();
     foreach ($form_fields as $field_info)
     {
+      $field_id        = $field_info["field_id"];
       $is_system_field = $field_info["is_system_field"];
       $field_name      = $field_info["field_name"];
 
@@ -709,15 +709,24 @@ function ft_api_process_form($params)
       if ($is_system_field == "yes")
         continue;
 
-      $custom_form_fields[$field_name] = array(
-        "field_id"    => $field_info["field_id"],
-        "col_name"    => $field_info["col_name"],
-        "field_title" => $field_info["field_title"],
-        "include_on_redirect" => $field_info["include_on_redirect"],
-        "field_type_id" => $field_info["field_type_id"],
-        "is_date_field" => $field_info["is_date_field"],
-        "is_file_field" => $field_info["is_file_field"]
-      );
+      if ($field_info["is_file_field"] == "no")
+      {
+        $custom_form_fields[$field_name] = array(
+          "field_id"    => $field_id,
+          "col_name"    => $field_info["col_name"],
+          "field_title" => $field_info["field_title"],
+          "include_on_redirect" => $field_info["include_on_redirect"],
+          "field_type_id" => $field_info["field_type_id"],
+          "is_date_field" => $field_info["is_date_field"]
+        );
+      }
+      else
+      {
+        $file_fields[] = array(
+          "field_id"   => $field_id,
+          "field_info" => $field_info
+        );
+      }
     }
 
     // now examine the contents of the POST/GET submission and get a list of those fields
@@ -728,11 +737,6 @@ function ft_api_process_form($params)
       if (array_key_exists($form_field, $custom_form_fields))
       {
         $curr_form_field = $custom_form_fields[$form_field];
-
-        // ignore file fields - they're handled separately
-        if ($curr_form_field["is_file_field"] == "yes")
-          continue;
-
         $cleaned_value = $value;
         if (is_array($value))
         {
@@ -813,8 +817,9 @@ function ft_api_process_form($params)
           return array(false, 304);
       }
 
-      // used for uploading files
-      extract(ft_process_hook_calls("after_update", compact("form_id", "submission_id"), array()), EXTR_OVERWRITE);
+      // used for uploading files. The error handling is incomplete here, like previous versions. Although the hooks
+      // are permitted to return values, they're not used
+      extract(ft_process_hook_calls("manage_files", compact("form_id", "submission_id", "file_fields", "namespace"), array("success", "message")), EXTR_OVERWRITE);
     }
 
     // store all the info in sessions
