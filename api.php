@@ -16,7 +16,7 @@ $g_api_recaptcha_private_key = "";
 
 // ------------------------------------------------------------------------------------------------
 // don't edit anything below here!
-$g_api_version = "1.0.0-beta-20090114";
+$g_api_version = "1.0.0-beta-20090211";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -219,6 +219,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
 
 
 	// if we're not displaying all results on the single page, generate the pagination HTML
+	$pagination = "";
   if ($num_per_page != "all")
   {
   	$page_num_identifier = isset($options["page_num_identifier"]) ? $options["page_num_identifier"] : "page";
@@ -540,6 +541,7 @@ function ft_api_process_form($params)
   }
 
 	// extract the submission ID and form ID from sessions
+	$form_data     = $params["form_data"];
   $form_id       = isset($_SESSION[$namespace]["form_tools_form_id"]) ? $_SESSION[$namespace]["form_tools_form_id"] : "";
   $submission_id = isset($_SESSION[$namespace]["form_tools_submission_id"]) ? $_SESSION[$namespace]["form_tools_submission_id"] : "";
   $has_captcha   = isset($form_data["recaptcha_response_field"]) ? true : false;
@@ -571,14 +573,11 @@ function ft_api_process_form($params)
 	  return;
 
 	$submit_button_name = $params["submit_button"];
-	$form_data          = $params["form_data"];
 	$next_page          = isset($params["next_page"]) ? $params["next_page"] : "";
 	$file_data          = isset($params["file_data"]) ? $params["file_data"] : array();
 	$finalize           = isset($params["finalize"]) ? $params["finalize"] : false;
 	$namespace          = isset($params["namespace"]) ? $params["namespace"] : "form_tools_form";
 	$may_update_finalized_submissions = isset($params["may_update_finalized_submissions"]) ? $params["may_update_finalized_submissions"] : false;
-
-  $form_data = ft_sanitize($form_data);
 
 
   // if we're in test mode, we don't do anything with the database - just store the fields in
@@ -651,6 +650,9 @@ function ft_api_process_form($params)
   		else
   		  return array(false, 303);
 	  }
+
+		// NOW we sanitize the data (i.e. get it ready for the DB query)
+		$form_data = ft_sanitize($form_data);
 
     extract(ft_process_hooks("start", compact("form_info", "form_id", "form_data"), array("form_data")), EXTR_OVERWRITE);
 
