@@ -9,7 +9,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.0.0-beta-20090905";
+$g_api_version = "1.0.0-beta-20090908";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -1201,12 +1201,10 @@ function ft_api_update_client_account($account_id, $info)
 {
   global $g_table_prefix, $g_api_debug;
 
-
   // check the account ID is valid
   $account_id = ft_sanitize($account_id);
   $info = ft_sanitize($info);
   $account_info = ft_get_account_info($account_id);
-
 
   // check the account ID was valid (i.e. the account exists) and that it's a CLIENT account
   if (!isset($account_info["account_id"]))
@@ -1546,7 +1544,13 @@ function ft_api_check_submission_is_unique($form_id, $criteria, $current_submiss
  */
 function ft_api_start_sessions()
 {
-  global $g_api_header_charset;
+  global $g_session_type, $g_session_save_path, $g_api_header_charset;
+
+  if ($g_session_type == "database")
+    $sess = new SessionManager();
+
+  if (!empty($g_session_save_path))
+    session_save_path($g_session_save_path);
 
   session_start();
   header("Cache-control: private");
