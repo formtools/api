@@ -2,7 +2,7 @@
 
 /**
  * The Form Tools API. For more information, see the online documentation:
- * http://docs.formtools.org/api
+ * http://docs.formtools.org/api/
  *
  * @version 1.0.0
  */
@@ -16,7 +16,7 @@ $g_api_recaptcha_private_key = "";
 
 // ------------------------------------------------------------------------------------------------
 // don't edit anything below here!
-$g_api_version = "1.0.0-beta-20081230";
+$g_api_version = "1.0.0-beta-20090105";
 $g_api_recaptcha_error = null;
 
 // import the main library file
