@@ -16,7 +16,7 @@ $g_api_recaptcha_private_key = "";
 
 // ------------------------------------------------------------------------------------------------
 // don't edit anything below here!
-$g_api_version = "1.0.0-beta-20090105";
+$g_api_version = "1.0.0-beta-20090114";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -570,7 +570,6 @@ function ft_api_process_form($params)
   if (!$is_deleting_file && !isset($params["form_data"][$params["submit_button"]]))
 	  return;
 
-
 	$submit_button_name = $params["submit_button"];
 	$form_data          = $params["form_data"];
 	$next_page          = isset($params["next_page"]) ? $params["next_page"] : "";
@@ -581,9 +580,10 @@ function ft_api_process_form($params)
 
   $form_data = ft_sanitize($form_data);
 
+
   // if we're in test mode, we don't do anything with the database - just store the fields in
   // sessions to emulate
-  if ($form_id == "test")
+  if ($form_id == "test" || $submission_id == "test")
   {
 	  reset($form_data);
 	  while (list($field_name, $value) = each($form_data))
@@ -652,15 +652,8 @@ function ft_api_process_form($params)
   		  return array(false, 303);
 	  }
 
+    extract(ft_process_hooks("start", compact("form_info", "form_id", "form_data"), array("form_data")), EXTR_OVERWRITE);
 
-	  if (ft_check_module_enabled("submission_pre_parser"))
-	  {
-	    ft_include_module("submission_pre_parser");
-	    $_POST = $form_data;
-	    $_POST["form_tools_form_id"] = $form_id;
-	    spp_parse();
-	    $form_data = $_POST;
-	  }
 
 	  // get a list of the custom form fields (i.e. non-system) for this form
 	  $form_fields = ft_get_form_fields($form_id);
