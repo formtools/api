@@ -9,7 +9,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.0.0-beta-20090815";
+$g_api_version = "1.0.0-beta-20090905";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -63,28 +63,28 @@ require_once("$folder/../library.php");
  */
 function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num = 1, $options = array())
 {
-	global $g_table_prefix, $LANG, $g_api_debug, $g_smarty;
+  global $g_table_prefix, $LANG, $g_api_debug, $g_smarty;
 
-	// sanitize all incoming data
-	$form_id        = ft_sanitize($form_id);
-	$view_id        = ft_sanitize($view_id);
-	$export_type_id = ft_sanitize($export_type_id);
-	$page_num       = ft_sanitize($page_num);
-	$options        = ft_sanitize($options);
+  // sanitize all incoming data
+  $form_id        = ft_sanitize($form_id);
+  $view_id        = ft_sanitize($view_id);
+  $export_type_id = ft_sanitize($export_type_id);
+  $page_num       = ft_sanitize($page_num);
+  $options        = ft_sanitize($options);
 
-	// check the Export Manager module is enabled
+  // check the Export Manager module is enabled
   if (ft_check_module_enabled("export_manager"))
-  	ft_include_module("export_manager");
+    ft_include_module("export_manager");
   else
   {
-  	if ($g_api_debug)
-  	{
-		  $page_vars = array("message_type" => "error", "error_code" => 400, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  	  return array(false, 400);
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 400, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 400);
   }
 
   // check the form ID, View ID and export ID are valid
@@ -93,14 +93,14 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
   $form_found = ($result["c"] == 1) ? true : false;
   if (!$form_found)
   {
-  	if ($g_api_debug)
-  	{
-	  	$page_vars = array("message_type" => "error", "error_code" => 401, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  	  return array(false, 401);
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 401, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 401);
   }
 
   $view_query = mysql_query("SELECT count(*) as c FROM {$g_table_prefix}views WHERE form_id = $form_id AND view_id = $view_id");
@@ -108,14 +108,14 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
   $view_found = ($result["c"] == 1) ? true : false;
   if (!$view_found)
   {
-  	if ($g_api_debug)
-  	{
-	  	$page_vars = array("message_type" => "error", "error_code" => 402, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  	  return array(false, 402);
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 402, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 402);
   }
 
   $export_type_query = mysql_query("SELECT count(*) as c FROM {$g_table_prefix}module_export_types WHERE export_type_id = $export_type_id");
@@ -123,14 +123,14 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
   $export_type_found = ($result["c"] == 1) ? true : false;
   if (!$export_type_found)
   {
-  	if ($g_api_debug)
-  	{
-	  	$page_vars = array("message_type" => "error", "error_code" => 403, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  	  return array(false, 403);
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 403, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 403);
   }
 
   // okay, now lets figure out what needs to be displayed & rendered
@@ -153,26 +153,26 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
   // figure out which columns to show
   if (isset($options["show_columns_only"]) && $options["show_columns_only"])
   {
-  	$display_fields = ft_get_submission_field_info($view_info["fields"]);
+    $display_fields = ft_get_submission_field_info($view_info["fields"]);
 
-		$columns  = array();
-		foreach ($display_fields as $field_info)
-		  $columns[] = $field_info["col_name"];
-	}
-	else
-	{
-		$columns = "all";
-		$display_fields = ft_get_submission_field_info($view_info["fields"], true);
-	}
+    $columns  = array();
+    foreach ($display_fields as $field_info)
+      $columns[] = $field_info["col_name"];
+  }
+  else
+  {
+    $columns = "all";
+    $display_fields = ft_get_submission_field_info($view_info["fields"], true);
+  }
 
-	$submission_ids = array();
-	if (isset($options["submission_ids"]))
-	{
-		if (is_numeric($options["submission_ids"]))
-		  $submission_ids[] = $options["submission_ids"];
-		else if (is_array($submission_ids))
-		  $submission_ids = $options["submission_ids"];
-	}
+  $submission_ids = array();
+  if (isset($options["submission_ids"]))
+  {
+    if (is_numeric($options["submission_ids"]))
+      $submission_ids[] = $options["submission_ids"];
+    else if (is_array($submission_ids))
+      $submission_ids = $options["submission_ids"];
+  }
 
   // perform the almighty search query
   $results_info = ft_search_submissions($form_id, $view_id, $num_per_page, $page_num, $order, $columns, array(), $submission_ids);
@@ -181,42 +181,42 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
   $settings = ft_get_settings();
 
   // now build the list of information we're going to send to the export type smarty template
-	$placeholders = exp_get_export_filename_placeholder_hash();
-	$placeholders["export_group_id"] = $export_group_id;
-	$placeholders["export_type_id"] = $export_type_id;
-	$placeholders["export_group_results"] = "all";
-	$placeholders["same_page"] = $_SERVER["PHP_SELF"];
-	$placeholders["display_fields"] = $display_fields;
-	$placeholders["submissions"]    = $results_info["search_rows"];
-	$placeholders["num_results"]    = $results_info["search_num_results"];
-	$placeholders["view_num_results"] = $results_info["view_num_results"];
-	$placeholders["form_info"] = $form_info;
-	$placeholders["view_info"] = $view_info;
-	$placeholders["date_format"] = $settings["default_date_format"];
-	$placeholders["timezone_offset"] = $settings["timezone_offset"];
+  $placeholders = exp_get_export_filename_placeholder_hash();
+  $placeholders["export_group_id"] = $export_group_id;
+  $placeholders["export_type_id"] = $export_type_id;
+  $placeholders["export_group_results"] = "all";
+  $placeholders["same_page"] = $_SERVER["PHP_SELF"];
+  $placeholders["display_fields"] = $display_fields;
+  $placeholders["submissions"]    = $results_info["search_rows"];
+  $placeholders["num_results"]    = $results_info["search_num_results"];
+  $placeholders["view_num_results"] = $results_info["view_num_results"];
+  $placeholders["form_info"] = $form_info;
+  $placeholders["view_info"] = $view_info;
+  $placeholders["date_format"] = $settings["default_date_format"];
+  $placeholders["timezone_offset"] = $settings["timezone_offset"];
 
-	// pull out a few things into top level placeholders for easy use
-	$placeholders["form_name"] = $form_info["form_name"];
-	$placeholders["form_id"]   = $form_id;
-	$placeholders["form_url"]  = $form_info["form_url"];
-	$placeholders["view_name"] = $view_info["view_name"];
-	$placeholders["view_id"]   = $view_id;
+  // pull out a few things into top level placeholders for easy use
+  $placeholders["form_name"] = $form_info["form_name"];
+  $placeholders["form_id"]   = $form_id;
+  $placeholders["form_url"]  = $form_info["form_url"];
+  $placeholders["view_name"] = $view_info["view_name"];
+  $placeholders["view_id"]   = $view_id;
 
-	$placeholders["export_group_name"] = ft_create_slug(ft_eval_smarty_string($export_group_info["group_name"]));
-	$placeholders["export_group_type"] = ft_create_slug(ft_eval_smarty_string($export_type_info["export_type_name"]));
-	$placeholders["filename"] = ft_eval_smarty_string($export_type_info["filename"], $placeholders, "", $g_smarty->plugins_dir);
+  $placeholders["export_group_name"] = ft_create_slug(ft_eval_smarty_string($export_group_info["group_name"]));
+  $placeholders["export_group_type"] = ft_create_slug(ft_eval_smarty_string($export_type_info["export_type_name"]));
+  $placeholders["filename"] = ft_eval_smarty_string($export_type_info["filename"], $placeholders, "", $g_smarty->plugins_dir);
 
-	$template = $export_type_info["export_type_smarty_template"];
-	$placeholders["export_type_name"] = $export_type_info["export_type_name"];
-	$export_type_smarty_template = ft_eval_smarty_string($template, $placeholders, "", $g_smarty->plugins_dir);
+  $template = $export_type_info["export_type_smarty_template"];
+  $placeholders["export_type_name"] = $export_type_info["export_type_name"];
+  $export_type_smarty_template = ft_eval_smarty_string($template, $placeholders, "", $g_smarty->plugins_dir);
 
 
-	// if we're not displaying all results on the single page, generate the pagination HTML
-	$pagination = "";
+  // if we're not displaying all results on the single page, generate the pagination HTML
+  $pagination = "";
   if ($num_per_page != "all")
   {
-  	$page_num_identifier = isset($options["page_num_identifier"]) ? $options["page_num_identifier"] : "page";
-  	$theme               = isset($options["pagination_theme"]) ? $options["pagination_theme"] : $settings["default_theme"];
+    $page_num_identifier = isset($options["page_num_identifier"]) ? $options["page_num_identifier"] : "page";
+    $theme               = isset($options["pagination_theme"]) ? $options["pagination_theme"] : $settings["default_theme"];
     $pagination = ft_get_page_nav($search_num_results, $num_per_page, $page_num, "", $page_num_identifier, $theme);
   }
 
@@ -224,37 +224,37 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
 
   switch ($pagination_location)
   {
-  	case "top":
-  		$html = $pagination . $export_type_smarty_template;
-  		break;
-  	case "both":
-  		$html = $pagination . $export_type_smarty_template . $pagination;
-  		break;
-  	case "bottom":
-  		$html = $export_type_smarty_template . $pagination;
-  		break;
-  	case "none":
-  		$html = $export_type_smarty_template;
-  		break;
+    case "top":
+      $html = $pagination . $export_type_smarty_template;
+      break;
+    case "both":
+      $html = $pagination . $export_type_smarty_template . $pagination;
+      break;
+    case "bottom":
+      $html = $export_type_smarty_template . $pagination;
+      break;
+    case "none":
+      $html = $export_type_smarty_template;
+      break;
 
-  	// this is in case the user entered an invalid value
-  	default:
-	  	if ($g_api_debug)
-	  	{
-		  	$page_vars = array("message_type" => "error", "error_code" => 404, "error_type" => "user");
-			  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-			  exit;
-	  	}
-	  	else
-	  	  return array(false, 404);
-  		break;
+    // this is in case the user entered an invalid value
+    default:
+      if ($g_api_debug)
+      {
+        $page_vars = array("message_type" => "error", "error_code" => 404, "error_type" => "user");
+        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        exit;
+      }
+      else
+        return array(false, 404);
+      break;
   }
 
 
-	if (isset($options["return_as_string"]) && $options["return_as_string"])
-	  return array(true, $html);
-	else
-	  echo $html;
+  if (isset($options["return_as_string"]) && $options["return_as_string"])
+    return array(true, $html);
+  else
+    echo $html;
 }
 
 
@@ -269,11 +269,11 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
  */
 function ft_api_show_submission($form_id, $view_id, $export_type_id, $submission_id)
 {
-	$options = array(
-	  "submission_ids" => $submission_id,
-	  "num_per_page" => "all" // prevents the pagination showing up
-	);
-	ft_api_show_submissions($form_id, $view_id, $export_type_id, "", $options);
+  $options = array(
+    "submission_ids" => $submission_id,
+    "num_per_page" => "all" // prevents the pagination showing up
+  );
+  ft_api_show_submissions($form_id, $view_id, $export_type_id, "", $options);
 }
 
 
@@ -301,53 +301,53 @@ function ft_api_show_submission_count($form_id, $view_id = "")
  */
 function ft_api_create_blank_submission($form_id, $finalized = false, $default_values = array())
 {
-	global $g_table_prefix;
+  global $g_table_prefix;
 
-	// confirm the form is valid
-	if (!ft_check_form_exists($form_id))
-	{
-	  $page_vars = array("message_type" => "error", "error_code" => 500, "error_type" => "user");
-	  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-	  exit;
-	}
+  // confirm the form is valid
+  if (!ft_check_form_exists($form_id))
+  {
+    $page_vars = array("message_type" => "error", "error_code" => 500, "error_type" => "user");
+    ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+    exit;
+  }
 
-	$now = ft_get_current_datetime();
-	$ip_address = $_SERVER["REMOTE_ADDR"];
-	$is_finalized = ($finalized) ? "yes" : "no";
+  $now = ft_get_current_datetime();
+  $ip_address = $_SERVER["REMOTE_ADDR"];
+  $is_finalized = ($finalized) ? "yes" : "no";
 
-	$col_str = "";
-	$val_str = "";
-	if (!empty($default_values))
-	{
-		$cols = array_keys($default_values);
-		$col_str = ", " . join(", ", $cols);
-		$vals = array_values($default_values);
+  $col_str = "";
+  $val_str = "";
+  if (!empty($default_values))
+  {
+    $cols = array_keys($default_values);
+    $col_str = ", " . join(", ", $cols);
+    $vals = array_values($default_values);
 
-		$escaped_vals = array();
-		foreach ($vals as $val)
-		  $escaped_vals[] = "'" . ft_sanitize($val) . "'";
+    $escaped_vals = array();
+    foreach ($vals as $val)
+      $escaped_vals[] = "'" . ft_sanitize($val) . "'";
 
-		$val_str = ", " . join(", ", $escaped_vals);
-	}
+    $val_str = ", " . join(", ", $escaped_vals);
+  }
 
-	$query = @mysql_query("
-	  INSERT INTO {$g_table_prefix}form_{$form_id} (submission_date, last_modified_date, is_finalized, ip_address{$col_str})
-	  VALUES ('$now', '$now', '$is_finalized', '$ip_address'{$val_str})
-	    ");
+  $query = @mysql_query("
+    INSERT INTO {$g_table_prefix}form_{$form_id} (submission_date, last_modified_date, is_finalized, ip_address{$col_str})
+    VALUES ('$now', '$now', '$is_finalized', '$ip_address'{$val_str})
+      ");
 
-	if ($query)
-	  return mysql_insert_id();
-	else
-	{
-	  $page_vars = array(
-	    "message_type" => "error",
-	    "error_code" => 501,
-	    "error_type" => "user",
-	    "debugging" => mysql_error()
-	  );
-	  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		exit;
-	}
+  if ($query)
+    return mysql_insert_id();
+  else
+  {
+    $page_vars = array(
+      "message_type" => "error",
+      "error_code" => 501,
+      "error_type" => "user",
+      "debugging" => mysql_error()
+    );
+    ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+    exit;
+  }
 }
 
 
@@ -375,9 +375,9 @@ function ft_api_create_blank_submission($form_id, $finalized = false, $default_v
  */
 function ft_api_init_form_page($form_id = "", $mode = "live", $namespace = "form_tools_form")
 {
-	global $g_api_header_charset;
+  global $g_api_header_charset;
 
-	if (!isset($_SESSION))
+  if (!isset($_SESSION))
     ft_api_start_sessions();
 
   if (!isset($_SESSION[$namespace]) || empty($_SESSION[$namespace]))
@@ -385,43 +385,43 @@ function ft_api_init_form_page($form_id = "", $mode = "live", $namespace = "form
     $_SESSION[$namespace] = array();
 
     // here, form_id should have been set: this is the FIRST page of (potentially) a multi-page form
-   	switch ($mode)
-   	{
-   		case "test":
-    		$_SESSION[$namespace]["form_tools_form_id"]       = "test";
-	    	$_SESSION[$namespace]["form_tools_submission_id"] = "test";
-	    	break;
+     switch ($mode)
+     {
+       case "test":
+        $_SESSION[$namespace]["form_tools_form_id"]       = "test";
+        $_SESSION[$namespace]["form_tools_submission_id"] = "test";
+        break;
 
-   		case "initialize":
-   			// if form ID is blank here, chances are a user just put through their test submission an has returned
-   			// to a multi-page form page. In this situation, the sessions have been emptied, but this function is
-   			// called PRIOR to ft_api_process_form, which does the job of auto-redirecting to whatever page is
-   			// specified by the user
-   			if (empty($form_id))
-   			  return $_SESSION[$namespace];
-   			$_SESSION[$namespace]["form_tools_form_id"]       = $form_id;
-    	  $_SESSION[$namespace]["form_tools_submission_id"] = "initializing";
-    	  $_SESSION[$namespace]["form_tools_initialize_form"] = 1;
-    	  break;
+       case "initialize":
+         // if form ID is blank here, chances are a user just put through their test submission an has returned
+         // to a multi-page form page. In this situation, the sessions have been emptied, but this function is
+         // called PRIOR to ft_api_process_form, which does the job of auto-redirecting to whatever page is
+         // specified by the user
+         if (empty($form_id))
+           return $_SESSION[$namespace];
+         $_SESSION[$namespace]["form_tools_form_id"]       = $form_id;
+        $_SESSION[$namespace]["form_tools_submission_id"] = "initializing";
+        $_SESSION[$namespace]["form_tools_initialize_form"] = 1;
+        break;
 
-   		case "live":
-   			// if form ID is blank here, chances are a user is just returning to a multi-page form page
-   			// after putting through the submission. In this situation, the sessions have been emptied, but
-   			// this function is called PRIOR to ft_api_process_form, which does the job of auto-redirecting
-   			// to whatever page is specified by the user
-   			if (empty($form_id))
-   			  return $_SESSION[$namespace];
+       case "live":
+         // if form ID is blank here, chances are a user is just returning to a multi-page form page
+         // after putting through the submission. In this situation, the sessions have been emptied, but
+         // this function is called PRIOR to ft_api_process_form, which does the job of auto-redirecting
+         // to whatever page is specified by the user
+         if (empty($form_id))
+           return $_SESSION[$namespace];
 
-    	  $submission_id = ft_api_create_blank_submission($form_id);
-	    	$_SESSION[$namespace]["form_tools_form_id"]       = $form_id;
-	    	$_SESSION[$namespace]["form_tools_submission_id"] = $submission_id;
-	    	break;
+        $submission_id = ft_api_create_blank_submission($form_id);
+        $_SESSION[$namespace]["form_tools_form_id"]       = $form_id;
+        $_SESSION[$namespace]["form_tools_submission_id"] = $submission_id;
+        break;
 
-   		default:
-			  $page_vars = array("message_type" => "error", "error_code" => 200, "error_type" => "user");
-			  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-			  exit;
-   			break;
+       default:
+        $page_vars = array("message_type" => "error", "error_code" => 200, "error_type" => "user");
+        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        exit;
+         break;
     }
   }
 
@@ -436,8 +436,8 @@ function ft_api_init_form_page($form_id = "", $mode = "live", $namespace = "form
  */
 function ft_api_clear_form_sessions($namespace = "form_tools_form")
 {
-	$_SESSION[$namespace] = "";
-	unset($_SESSION[$namespace]);
+  $_SESSION[$namespace] = "";
+  unset($_SESSION[$namespace]);
 }
 
 
@@ -476,352 +476,352 @@ function ft_api_clear_form_sessions($namespace = "form_tools_form")
  */
 function ft_api_process_form($params)
 {
-	global $g_table_prefix, $g_multi_val_delimiter, $LANG, $g_api_debug, $g_api_recaptcha_private_key,
-	  $g_api_recaptcha_error;
+  global $g_table_prefix, $g_multi_val_delimiter, $LANG, $g_api_debug, $g_api_recaptcha_private_key,
+    $g_api_recaptcha_error;
 
-	// the form data parameter must ALWAYS be defined
-	if (!isset($params["form_data"]))
-	{
-		if ($g_api_debug)
-		{
-   	  $page_vars = array("message_type" => "error", "error_code" => 306, "error_type" => "user");
-	    ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-	    exit;
-		}
-		else
-		  return array(false, 306);
-	}
+  // the form data parameter must ALWAYS be defined
+  if (!isset($params["form_data"]))
+  {
+    if ($g_api_debug)
+    {
+       $page_vars = array("message_type" => "error", "error_code" => 306, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 306);
+  }
 
   // special case: if "form_tools_delete_image_field__[fieldname]" exists, the user is just deleting an image
   // already uploaded through the form using the HTML generated by the ft_api_display_image_field function.
   // In this case, we process the page normally - even though the form data wasn't submitted & the page may
   // contain nothing in $form_data
-	$is_deleting_file = false;
-	$file_field_to_delete = "";
+  $is_deleting_file = false;
+  $file_field_to_delete = "";
   $namespace = isset($params["namespace"]) ? $params["namespace"] : "form_tools_form";
-	$form_id   = isset($_SESSION[$namespace]["form_tools_form_id"]) ? $_SESSION[$namespace]["form_tools_form_id"] : "";
+  $form_id   = isset($_SESSION[$namespace]["form_tools_form_id"]) ? $_SESSION[$namespace]["form_tools_form_id"] : "";
   $submission_id   = isset($_SESSION[$namespace]["form_tools_submission_id"]) ? $_SESSION[$namespace]["form_tools_submission_id"] : "";
-	while (list($key, $value) = each($params["form_data"]))
-	{
+  while (list($key, $value) = each($params["form_data"]))
+  {
     if (preg_match("/form_tools_delete_image_field__(.*)$/", $key, $matches))
     {
-    	$file_field_to_delete = $matches[1];
-    	$is_deleting_file = true;
+      $file_field_to_delete = $matches[1];
+      $is_deleting_file = true;
 
-    	$field_id = ft_get_form_field_id_by_field_name($file_field_to_delete, $form_id);
+      $field_id = ft_get_form_field_id_by_field_name($file_field_to_delete, $form_id);
 
       ft_delete_file_submission($form_id, $submission_id, $field_id, true);
 
       unset($_SESSION[$namespace][$file_field_to_delete]);
       unset($params["form_data"][$key]);
     }
-	}
+  }
 
   // check the submission exists
   if (is_numeric($form_id) && is_numeric($submission_id) && !ft_check_submission_exists($form_id, $submission_id))
   {
-		if ($g_api_debug)
-		{
-   	  $page_vars = array("message_type" => "error", "error_code" => 305, "error_type" => "user",
-	      "debugging" => "{$LANG["phrase_submission_id"]}: $submission_id");
-	    ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-	    exit;
-		}
-		else
-		  return array(false, 305);
+    if ($g_api_debug)
+    {
+       $page_vars = array("message_type" => "error", "error_code" => 305, "error_type" => "user",
+        "debugging" => "{$LANG["phrase_submission_id"]}: $submission_id");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 305);
   }
 
-	// extract the submission ID and form ID from sessions
-	$form_data     = $params["form_data"];
+  // extract the submission ID and form ID from sessions
+  $form_data     = $params["form_data"];
   $form_id       = isset($_SESSION[$namespace]["form_tools_form_id"]) ? $_SESSION[$namespace]["form_tools_form_id"] : "";
   $submission_id = isset($_SESSION[$namespace]["form_tools_submission_id"]) ? $_SESSION[$namespace]["form_tools_submission_id"] : "";
   $has_captcha   = isset($form_data["recaptcha_response_field"]) ? true : false;
-	$no_sessions_url    = isset($params["no_sessions_url"]) ? $params["no_sessions_url"] : false;
+  $no_sessions_url    = isset($params["no_sessions_url"]) ? $params["no_sessions_url"] : false;
 
   if (empty($form_id) || empty($submission_id))
   {
-  	if (!empty($no_sessions_url))
-  	{
-  		header("location: $no_sessions_url");
-  		exit;
-  	}
-  	else
-  	{
-  		if ($g_api_debug)
-  		{
-			  $page_vars = array("message_type" => "error", "error_code" => 300, "error_type" => "user");
-			  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-			  exit;
-  		}
-  		else
-  		  return array(false, 300);
-  	}
+    if (!empty($no_sessions_url))
+    {
+      header("location: $no_sessions_url");
+      exit;
+    }
+    else
+    {
+      if ($g_api_debug)
+      {
+        $page_vars = array("message_type" => "error", "error_code" => 300, "error_type" => "user");
+        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        exit;
+      }
+      else
+        return array(false, 300);
+    }
   }
 
-	// if the user is neither deleting a file or making a regular form submission, it means they've just
-	// arrived at the page. Cool! Do nothing!
+  // if the user is neither deleting a file or making a regular form submission, it means they've just
+  // arrived at the page. Cool! Do nothing!
   if (!$is_deleting_file && !isset($params["form_data"][$params["submit_button"]]))
-	  return;
+    return;
 
-	$submit_button_name = $params["submit_button"];
-	$next_page          = isset($params["next_page"]) ? $params["next_page"] : "";
-	$file_data          = isset($params["file_data"]) ? $params["file_data"] : array();
-	$finalize           = isset($params["finalize"]) ? $params["finalize"] : false;
-	$namespace          = isset($params["namespace"]) ? $params["namespace"] : "form_tools_form";
-	$may_update_finalized_submissions = isset($params["may_update_finalized_submissions"]) ? $params["may_update_finalized_submissions"] : false;
+  $submit_button_name = $params["submit_button"];
+  $next_page          = isset($params["next_page"]) ? $params["next_page"] : "";
+  $file_data          = isset($params["file_data"]) ? $params["file_data"] : array();
+  $finalize           = isset($params["finalize"]) ? $params["finalize"] : false;
+  $namespace          = isset($params["namespace"]) ? $params["namespace"] : "form_tools_form";
+  $may_update_finalized_submissions = isset($params["may_update_finalized_submissions"]) ? $params["may_update_finalized_submissions"] : false;
 
 
   // if we're in test mode, we don't do anything with the database - just store the fields in
   // sessions to emulate
   if ($form_id == "test" || $submission_id == "test")
   {
-	  reset($form_data);
-	  while (list($field_name, $value) = each($form_data))
-	  	$_SESSION[$namespace][$field_name] = $value;
+    reset($form_data);
+    while (list($field_name, $value) = each($form_data))
+      $_SESSION[$namespace][$field_name] = $value;
   }
 
   else if (isset($_SESSION[$namespace]["form_tools_initialize_form"]))
   {
-  	// only process the form if this submission is being set to be finalized
-  	if ($finalize)
-  	{
-  	  // if the user is just putting through a test submission and we've reached the finalization step,
-		  // overwrite $form_data with ALL the
-		  $all_form_data = array_merge($_SESSION[$namespace], $form_data);
-	    ft_initialize_form($all_form_data);
-  	}
+    // only process the form if this submission is being set to be finalized
+    if ($finalize)
+    {
+      // if the user is just putting through a test submission and we've reached the finalization step,
+      // overwrite $form_data with ALL the
+      $all_form_data = array_merge($_SESSION[$namespace], $form_data);
+      ft_initialize_form($all_form_data);
+    }
 
-	  reset($form_data);
-	  while (list($field_name, $value) = each($form_data))
-	  	$_SESSION[$namespace][$field_name] = $value;
+    reset($form_data);
+    while (list($field_name, $value) = each($form_data))
+      $_SESSION[$namespace][$field_name] = $value;
   }
 
   // otherwise it's a standard form submission for a fully set up form, with - ostensibly - a valid
   // submission ID and form ID. Update the submission for whatever info is in $form_data and $file_data
   else
   {
-  	// check the form ID is valid
-  	if (!ft_check_form_exists($form_id))
-  	{
-  		if ($g_api_debug)
-  		{
-	  		$page_vars = array("message_type" => "error", "error_code" => 301, "error_type" => "user");
-			  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-			  exit;
-  		}
-  		else
-  		  return array(false, 301);
-  	}
+    // check the form ID is valid
+    if (!ft_check_form_exists($form_id))
+    {
+      if ($g_api_debug)
+      {
+        $page_vars = array("message_type" => "error", "error_code" => 301, "error_type" => "user");
+        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        exit;
+      }
+      else
+        return array(false, 301);
+    }
 
     // check the submission ID isn't finalized
     if (!$may_update_finalized_submissions && ft_check_submission_finalized($form_id, $submission_id))
     {
-  		if ($g_api_debug)
-  		{
-	    	$page_vars = array("message_type" => "error", "error_code" => 302, "error_type" => "user",
-			    "debugging" => "{$LANG["phrase_submission_id"]}: $submission_id");
-			  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-			  exit;
-  		}
-  		else
-  		  return array(false, 302);
+      if ($g_api_debug)
+      {
+        $page_vars = array("message_type" => "error", "error_code" => 302, "error_type" => "user",
+          "debugging" => "{$LANG["phrase_submission_id"]}: $submission_id");
+        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        exit;
+      }
+      else
+        return array(false, 302);
     }
 
-  	$form_info = ft_get_form($form_id);
+    $form_info = ft_get_form($form_id);
 
-	  // check to see if this form has been disabled
-	  if ($form_info["is_active"] == "no")
-	  {
-	  	if (isset($form_data["form_tools_inactive_form_redirect_url"]))
-	  	{
-	  	  header("location: {$form_data["form_tools_inactive_form_redirect_url"]}");
-	  	  exit;
-	  	}
-  		if ($g_api_debug)
-  		{
-		  	$page_vars = array("message_type" => "error", "error_code" => 303, "error_type" => "user");
-			  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-			  exit;
-  		}
-  		else
-  		  return array(false, 303);
-	  }
+    // check to see if this form has been disabled
+    if ($form_info["is_active"] == "no")
+    {
+      if (isset($form_data["form_tools_inactive_form_redirect_url"]))
+      {
+        header("location: {$form_data["form_tools_inactive_form_redirect_url"]}");
+        exit;
+      }
+      if ($g_api_debug)
+      {
+        $page_vars = array("message_type" => "error", "error_code" => 303, "error_type" => "user");
+        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        exit;
+      }
+      else
+        return array(false, 303);
+    }
 
-		// NOW we sanitize the data (i.e. get it ready for the DB query)
-		$form_data = ft_sanitize($form_data);
+    // NOW we sanitize the data (i.e. get it ready for the DB query)
+    $form_data = ft_sanitize($form_data);
 
     extract(ft_process_hooks("start", compact("form_info", "form_id", "form_data"), array("form_data")), EXTR_OVERWRITE);
 
 
-	  // get a list of the custom form fields (i.e. non-system) for this form
-	  $form_fields = ft_get_form_fields($form_id);
+    // get a list of the custom form fields (i.e. non-system) for this form
+    $form_fields = ft_get_form_fields($form_id);
 
-	  $custom_form_fields = array();
-	  foreach ($form_fields as $field_info)
-	  {
-	  	$field_id    = $field_info["field_id"];
-	  	$field_name  = $field_info["field_name"];
-	  	$col_name    = $field_info["col_name"];
-	  	$field_title = $field_info["field_title"];
-	  	$field_type  = $field_info["field_type"];
+    $custom_form_fields = array();
+    foreach ($form_fields as $field_info)
+    {
+      $field_id    = $field_info["field_id"];
+      $field_name  = $field_info["field_name"];
+      $col_name    = $field_info["col_name"];
+      $field_title = $field_info["field_title"];
+      $field_type  = $field_info["field_type"];
 
-	  	// ignore system fields
-	  	if ($field_type == "system")
-	  	  continue;
+      // ignore system fields
+      if ($field_type == "system")
+        continue;
 
-	    $custom_form_fields[$field_name] = array(
-	      "field_id" => $field_id,
-	      "col_name" => $col_name,
-	      "field_title" => $field_title,
-	      "field_type" => $field_type
-	        );
-	  }
+      $custom_form_fields[$field_name] = array(
+        "field_id" => $field_id,
+        "col_name" => $col_name,
+        "field_title" => $field_title,
+        "field_type" => $field_type
+          );
+    }
 
-	  // now examine the contents of the POST/GET submission and get a list of those fields
-	  // which we're going to update
-	  $valid_form_fields  = array();
-	  while (list($form_field, $value) = each($form_data))
-	  {
-	    if (array_key_exists($form_field, $custom_form_fields))
-	    {
-	      $col_name = $custom_form_fields[$form_field]["col_name"];
-	      $cleaned_value = $value;
+    // now examine the contents of the POST/GET submission and get a list of those fields
+    // which we're going to update
+    $valid_form_fields  = array();
+    while (list($form_field, $value) = each($form_data))
+    {
+      if (array_key_exists($form_field, $custom_form_fields))
+      {
+        $col_name = $custom_form_fields[$form_field]["col_name"];
+        $cleaned_value = $value;
 
-	      if (is_array($value))
-	      {
-	        if ($form_info["submission_strip_tags"] == "yes")
-	        {
-	          for ($i=0; $i<count($value); $i++)
-	            $value[$i] = strip_tags($value[$i]);
-	        }
+        if (is_array($value))
+        {
+          if ($form_info["submission_strip_tags"] == "yes")
+          {
+            for ($i=0; $i<count($value); $i++)
+              $value[$i] = strip_tags($value[$i]);
+          }
 
-	        $cleaned_value = join("$g_multi_val_delimiter", $value);
-	      }
-	      else
-	      {
-	        if ($form_info["submission_strip_tags"] == "yes")
-	          $cleaned_value = strip_tags($value);
-	      }
+          $cleaned_value = join("$g_multi_val_delimiter", $value);
+        }
+        else
+        {
+          if ($form_info["submission_strip_tags"] == "yes")
+            $cleaned_value = strip_tags($value);
+        }
 
-	      $valid_form_fields[$col_name] = "'$cleaned_value'";
-	    }
-	  }
+        $valid_form_fields[$col_name] = "'$cleaned_value'";
+      }
+    }
 
-	  $now          = ft_get_current_datetime();
-	  $ip_address   = $_SERVER["REMOTE_ADDR"];
+    $now          = ft_get_current_datetime();
+    $ip_address   = $_SERVER["REMOTE_ADDR"];
     $is_finalized = ($finalize) ? "yes" : "no";
 
-	  $set_query = "";
-	  while (list($col_name, $value) = each($valid_form_fields))
-	  	$set_query .= "$col_name = $value,\n";
+    $set_query = "";
+    while (list($col_name, $value) = each($valid_form_fields))
+      $set_query .= "$col_name = $value,\n";
 
 
-	  // in this section, we update the database submission info & upload files. Note: we don't do ANYTHING
-	  // if the form_tools_ignore_submission key is set in the POST data
-	  if (!isset($form_data["form_tools_ignore_submission"]))
-	  {
-		  // construct our query. Note that we do TWO queries: one if there was no CAPTCHA sent with this
-		  // post (which automatically finalizes the result), and one if there WAS. For the latter, the submission
-		  // is finalized later
-	    if ($has_captcha && $finalize)
-	    {
-			  $query = "
-			    UPDATE {$g_table_prefix}form_$form_id
-			    SET    $set_query
-			           last_modified_date = '$now',
-			           ip_address = '$ip_address'
-			    WHERE  submission_id = $submission_id
-			      ";
-	    }
-	    else
-	    {
-	    	// only update the is_finalized setting if $may_update_finalized_submissions === false &&
-	    	if (!$finalize && $may_update_finalized_submissions)
-	    	  $is_finalized_clause = "";
-	    	else
-	    	  $is_finalized_clause = ", is_finalized = '$is_finalized'";
+    // in this section, we update the database submission info & upload files. Note: we don't do ANYTHING
+    // if the form_tools_ignore_submission key is set in the POST data
+    if (!isset($form_data["form_tools_ignore_submission"]))
+    {
+      // construct our query. Note that we do TWO queries: one if there was no CAPTCHA sent with this
+      // post (which automatically finalizes the result), and one if there WAS. For the latter, the submission
+      // is finalized later
+      if ($has_captcha && $finalize)
+      {
+        $query = "
+          UPDATE {$g_table_prefix}form_$form_id
+          SET    $set_query
+                 last_modified_date = '$now',
+                 ip_address = '$ip_address'
+          WHERE  submission_id = $submission_id
+            ";
+      }
+      else
+      {
+        // only update the is_finalized setting if $may_update_finalized_submissions === false &&
+        if (!$finalize && $may_update_finalized_submissions)
+          $is_finalized_clause = "";
+        else
+          $is_finalized_clause = ", is_finalized = '$is_finalized'";
 
-			  $query = "
-			    UPDATE {$g_table_prefix}form_$form_id
-			    SET    $set_query
-			           last_modified_date = '$now',
-			           ip_address = '$ip_address'
-			           $is_finalized_clause
-			    WHERE  submission_id = $submission_id
-			      ";
-	    }
-
-
-	    // only process the query if the form_tools_ignore_submission key isn't defined
-		  if (!mysql_query($query))
-		  {
-	  		if ($g_api_debug)
-	  		{
-				  $page_vars = array("message_type" => "error", "error_code" => 304, "error_type" => "system",
-				    "debugging"=> "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
-				        ": <i>" . nl2br($query) . "</i> " .  mysql_error());
-				  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-				  exit;
-	  		}
-	  		else
-	  			return array(false, 304);
-		  }
+        $query = "
+          UPDATE {$g_table_prefix}form_$form_id
+          SET    $set_query
+                 last_modified_date = '$now',
+                 ip_address = '$ip_address'
+                 $is_finalized_clause
+          WHERE  submission_id = $submission_id
+            ";
+      }
 
 
-		  // now the submission exists in the database, upload any files that were included
-		  while (list($file_form_field_name, $fileinfo) = each($file_data))
-		  {
-		    if (empty($fileinfo["name"]))
-		      continue;
+      // only process the query if the form_tools_ignore_submission key isn't defined
+      if (!mysql_query($query))
+      {
+        if ($g_api_debug)
+        {
+          $page_vars = array("message_type" => "error", "error_code" => 304, "error_type" => "system",
+            "debugging"=> "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
+                ": <i>" . nl2br($query) . "</i> " .  mysql_error());
+          ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+          exit;
+        }
+        else
+          return array(false, 304);
+      }
 
-		    if (array_key_exists($file_form_field_name, $custom_form_fields))
-		    {
-		    	$field_id   = $custom_form_fields[$file_form_field_name]["field_id"];
-		    	$field_type = $custom_form_fields[$file_form_field_name]["field_type"];
 
-		    	if ($field_type == "file")
-		    	{
-		    		list($success, $message, $filename) = ft_upload_submission_file($form_id, $submission_id, $field_id, $fileinfo);
+      // now the submission exists in the database, upload any files that were included
+      while (list($file_form_field_name, $fileinfo) = each($file_data))
+      {
+        if (empty($fileinfo["name"]))
+          continue;
 
-		    		// if the file upload was successful, store the file information in sessions. The information is
-		    		// stored as a hash with the following keys: "filename", "file_upload_dir", "file_upload_url"
-		    		if ($success)
-		    		{
-		    			$extended_field_info = ft_get_extended_field_settings($field_id);
+        if (array_key_exists($file_form_field_name, $custom_form_fields))
+        {
+          $field_id   = $custom_form_fields[$file_form_field_name]["field_id"];
+          $field_type = $custom_form_fields[$file_form_field_name]["field_type"];
 
-	            $curr_file_info = array(
-	              "filename" => $filename,
-	              "file_upload_dir" => $extended_field_info["file_upload_dir"],
-	              "file_upload_url" => $extended_field_info["file_upload_url"]
-	                );
+          if ($field_type == "file")
+          {
+            list($success, $message, $filename) = ft_upload_submission_file($form_id, $submission_id, $field_id, $fileinfo);
 
-	            $_SESSION[$namespace][$file_form_field_name] = $curr_file_info;
-		    		}
-		    	}
+            // if the file upload was successful, store the file information in sessions. The information is
+            // stored as a hash with the following keys: "filename", "file_upload_dir", "file_upload_url"
+            if ($success)
+            {
+              $extended_field_info = ft_get_extended_field_settings($field_id);
 
-		    	// TODO assumption: if the field is set as an image, the Image Manager is enabled
-		    	//else if ($field_type == "image")
-		    	//  list($success, $message, $filename) = ft_upload_submission_image($form_id, $submission_id, $field_id, $fileinfo);
-		    }
-		  }
-	  }
+              $curr_file_info = array(
+                "filename" => $filename,
+                "file_upload_dir" => $extended_field_info["file_upload_dir"],
+                "file_upload_url" => $extended_field_info["file_upload_url"]
+                  );
 
-	  // store all the info in sessions
-	  reset($form_data);
-	  while (list($field_name, $value) = each($form_data))
-	  	$_SESSION[$namespace][$field_name] = $value;
+              $_SESSION[$namespace][$file_form_field_name] = $curr_file_info;
+            }
+          }
+
+          // TODO assumption: if the field is set as an image, the Image Manager is enabled
+          //else if ($field_type == "image")
+          //  list($success, $message, $filename) = ft_upload_submission_image($form_id, $submission_id, $field_id, $fileinfo);
+        }
+      }
+    }
+
+    // store all the info in sessions
+    reset($form_data);
+    while (list($field_name, $value) = each($form_data))
+      $_SESSION[$namespace][$field_name] = $value;
   }
 
   // was there a reCAPTCHA response? If so, a recaptcha was just submitted, check it was entered correctly
   $passes_captcha = true;
   if ($has_captcha)
   {
-  	$passes_captcha = false;
-  	$recaptcha_challenge_field = $form_data["recaptcha_challenge_field"];
-  	$recaptcha_response_field  = $form_data["recaptcha_response_field"];
+    $passes_captcha = false;
+    $recaptcha_challenge_field = $form_data["recaptcha_challenge_field"];
+    $recaptcha_response_field  = $form_data["recaptcha_response_field"];
 
-  	$folder = dirname(__FILE__);
-	  require_once("$folder/recaptchalib.php");
+    $folder = dirname(__FILE__);
+    require_once("$folder/recaptchalib.php");
 
     $resp = recaptcha_check_answer($g_api_recaptcha_private_key, $_SERVER["REMOTE_ADDR"], $recaptcha_challenge_field, $recaptcha_response_field);
 
@@ -832,30 +832,30 @@ function ft_api_process_form($params)
       // if the developer wanted the submission to be finalized at this step, do so - it wasn't earlier!
       if ($finalize)
       {
-      	mysql_query("
-	      	UPDATE {$g_table_prefix}form_$form_id
-			    SET    is_finalized = 'yes'
-			    WHERE  submission_id = $submission_id
-			      ");
+        mysql_query("
+          UPDATE {$g_table_prefix}form_$form_id
+          SET    is_finalized = 'yes'
+          WHERE  submission_id = $submission_id
+            ");
       }
     }
     else
     {
-    	// register the recaptcha as a global, which can be picked up silently by ft_api_display_captcha to
-    	// let them know they entered it wrong
+      // register the recaptcha as a global, which can be picked up silently by ft_api_display_captcha to
+      // let them know they entered it wrong
       $g_api_recaptcha_error = $resp->error;
     }
   }
 
   if ($passes_captcha && !empty($next_page) && !$is_deleting_file)
   {
-  	// if the user wasn't putting through a test submission or initializing the form, we can send safely
-  	// send emails at this juncture, but ONLY if it was just finalized
+    // if the user wasn't putting through a test submission or initializing the form, we can send safely
+    // send emails at this juncture, but ONLY if it was just finalized
     if ($form_id != "test" && $submission_id != "test" && !isset($_SESSION[$namespace]["form_tools_initialize_form"]))
     {
       // send any emails attached to the on_submission trigger
-	    if ($is_finalized == "yes")
-		    ft_send_emails("on_submission", $form_id, $submission_id);
+      if ($is_finalized == "yes")
+        ft_send_emails("on_submission", $form_id, $submission_id);
     }
 
     header("location: $next_page");
@@ -889,7 +889,7 @@ function ft_api_process_form($params)
  */
 function ft_api_display_image_field($params)
 {
-	if (empty($params["field_name"]))
+  if (empty($params["field_name"]))
     return;
 
   $field_name = $params["field_name"];
@@ -908,13 +908,13 @@ function ft_api_display_image_field($params)
 
   echo "<div><img src=\"$file_upload_url/$filename\" {$width}{$height}/></div>";
 
-	// if required, add the "Delete"
-	if (!isset($params["hide_delete_button"]) || !$params["hide_delete_button"])
-	{
-		$delete_file_label = (isset($params["delete_button_label"])) ? $params["delete_button_label"] : "Delete file";
+  // if required, add the "Delete"
+  if (!isset($params["hide_delete_button"]) || !$params["hide_delete_button"])
+  {
+    $delete_file_label = (isset($params["delete_button_label"])) ? $params["delete_button_label"] : "Delete file";
 
-		echo "<div><input type=\"submit\" name=\"form_tools_delete_image_field__$field_name\" value=\"$delete_file_label\" /></div>";
-	}
+    echo "<div><input type=\"submit\" name=\"form_tools_delete_image_field__$field_name\" value=\"$delete_file_label\" /></div>";
+  }
 }
 
 
@@ -928,7 +928,7 @@ function ft_api_display_image_field($params)
  */
 function ft_api_load_field($field_name, $session_name, $default_value)
 {
-	return ft_load_field($field_name, $session_name, $default_value);
+  return ft_load_field($field_name, $session_name, $default_value);
 }
 
 
@@ -964,62 +964,62 @@ function ft_api_login($info)
 
   if (empty($password))
   {
- 		if ($g_api_debug)
- 		{
-		  $page_vars = array("message_type" => "error", "error_code" => 1000, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
- 		}
- 		else
- 			return array(false, 1000);
+     if ($g_api_debug)
+     {
+      $page_vars = array("message_type" => "error", "error_code" => 1000, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+     }
+     else
+       return array(false, 1000);
   }
 
   if (empty($account_info))
   {
- 		if ($g_api_debug)
- 		{
-		  $page_vars = array("message_type" => "error", "error_code" => 1004, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
- 		}
- 		else
- 			return array(false, 1004);
+     if ($g_api_debug)
+     {
+      $page_vars = array("message_type" => "error", "error_code" => 1004, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+     }
+     else
+       return array(false, 1004);
   }
 
   if ($account_info["account_status"] == "disabled")
   {
- 		if ($g_api_debug)
- 		{
-		  $page_vars = array("message_type" => "error", "error_code" => 1001, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
- 		}
- 		else
- 			return array(false, 1001);
+     if ($g_api_debug)
+     {
+      $page_vars = array("message_type" => "error", "error_code" => 1001, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+     }
+     else
+       return array(false, 1001);
   }
 
   if ($account_info["account_status"] == "pending")
   {
- 		if ($g_api_debug)
- 		{
-		  $page_vars = array("message_type" => "error", "error_code" => 1002, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
- 		}
- 		else
- 			return array(false, 1002);
+     if ($g_api_debug)
+     {
+      $page_vars = array("message_type" => "error", "error_code" => 1002, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+     }
+     else
+       return array(false, 1002);
   }
 
   if (md5(md5($password)) != $account_info["password"])
   {
- 		if ($g_api_debug)
- 		{
-		  $page_vars = array("message_type" => "error", "error_code" => 1003, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
- 		}
- 		else
- 			return array(false, 1003);
+     if ($g_api_debug)
+     {
+      $page_vars = array("message_type" => "error", "error_code" => 1003, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+     }
+     else
+       return array(false, 1003);
   }
 
 
@@ -1036,19 +1036,19 @@ function ft_api_login($info)
   {
     if (isset($info["login_url"]) && !empty($info["login_url"]))
     {
-		  session_write_close();
-		  header("Location: $login_url");
-		  exit;
-   	}
-   	else
-   	{
-		  $login_url = ft_construct_page_url($account_info["login_page"]);
-		  $login_url = "$g_root_url{$login_url}";
+      session_write_close();
+      header("Location: $login_url");
+      exit;
+     }
+     else
+     {
+      $login_url = ft_construct_page_url($account_info["login_page"]);
+      $login_url = "$g_root_url{$login_url}";
 
       session_write_close();
-		  header("Location: $login_url");
-		  exit;
-   	}
+      header("Location: $login_url");
+      exit;
+     }
   }
 
   return array(true, "");
@@ -1078,18 +1078,18 @@ function ft_api_login($info)
  */
 function ft_api_create_client_account($account_info)
 {
-	global $g_api_debug, $g_table_prefix;
+  global $g_api_debug, $g_table_prefix;
 
-	$account_info = ft_sanitize($account_info);
+  $account_info = ft_sanitize($account_info);
 
-	$error_codes = array();
+  $error_codes = array();
 
   // check all the valid fields
-	if (!isset($account_info["first_name"]) || empty($account_info["first_name"]))
+  if (!isset($account_info["first_name"]) || empty($account_info["first_name"]))
     $error_codes[] = 700;
-	if (!isset($account_info["last_name"]) || empty($account_info["last_name"]))
+  if (!isset($account_info["last_name"]) || empty($account_info["last_name"]))
     $error_codes[] = 701;
-	if (!isset($account_info["email"]) || empty($account_info["email"]))
+  if (!isset($account_info["email"]) || empty($account_info["email"]))
     $error_codes[] = 702;
   if (!ft_is_valid_email($account_info["email"]))
     $error_codes[] = 703;
@@ -1098,92 +1098,92 @@ function ft_api_create_client_account($account_info)
     $error_codes[] = 704;
   else
   {
-	  if (preg_match('/[^A-Za-z0-9]/', $account_info["username"]))
-	    $error_codes[] = 705;
-	  if (!_ft_is_valid_username($account_info["username"]))
-	    $error_codes[] = 706;
+    if (preg_match('/[^A-Za-z0-9]/', $account_info["username"]))
+      $error_codes[] = 705;
+    if (!_ft_is_valid_username($account_info["username"]))
+      $error_codes[] = 706;
   }
 
   if (!isset($account_info["password"]) || empty($account_info["password"]))
     $error_codes[] = 707;
   else
   {
-	  if (preg_match('/[^A-Za-z0-9]/', $account_info["password"]))
-	    $error_codes[] = 708;
+    if (preg_match('/[^A-Za-z0-9]/', $account_info["password"]))
+      $error_codes[] = 708;
   }
 
   if (!empty($error_codes))
   {
-  	if ($g_api_debug)
-  	{
-		  $page_vars = array("message_type" => "error", "error_codes" => $error_codes);
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, $error_codes);
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_codes" => $error_codes);
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, $error_codes);
   }
 
 
-	$first_name = $account_info["first_name"];
-	$last_name  = $account_info["last_name"];
-	$email      = $account_info["email"];
-	$username   = $account_info["username"];
-	$password   = md5(md5($account_info["password"]));
+  $first_name = $account_info["first_name"];
+  $last_name  = $account_info["last_name"];
+  $email      = $account_info["email"];
+  $username   = $account_info["username"];
+  $password   = md5(md5($account_info["password"]));
 
-	$settings = ft_get_settings();
-	$account_status   = (isset($account_info["account_status"])) ? $account_info["account_status"] : "pending";
-	$language         = (isset($account_info["ui_language"])) ? $account_info["ui_language"] : $settings["default_language"];
-	$timezone_offset  = (isset($account_info["timezone_offset"])) ? $account_info["timezone_offset"] : $settings["default_timezone_offset"];
-	$sessions_timeout = (isset($account_info["sessions_timeout"])) ? $account_info["sessions_timeout"] : $settings["default_sessions_timeout"];
-	$date_format      = (isset($account_info["date_format"])) ? $account_info["date_format"] : $settings["default_date_format"];
-	$login_page       = (isset($account_info["login_page"])) ? $account_info["login_page"] : $settings["default_login_page"];
-	$logout_url       = (isset($account_info["logout_url"])) ? $account_info["logout_url"] : $settings["default_logout_url"];
-	$theme            = (isset($account_info["theme"])) ? $account_info["theme"] : $settings["default_theme"];
-	$menu_id          = (isset($account_info["menu_id"])) ? $account_info["menu_id"] : $settings["default_client_menu_id"];
+  $settings = ft_get_settings();
+  $account_status   = (isset($account_info["account_status"])) ? $account_info["account_status"] : "pending";
+  $language         = (isset($account_info["ui_language"])) ? $account_info["ui_language"] : $settings["default_language"];
+  $timezone_offset  = (isset($account_info["timezone_offset"])) ? $account_info["timezone_offset"] : $settings["default_timezone_offset"];
+  $sessions_timeout = (isset($account_info["sessions_timeout"])) ? $account_info["sessions_timeout"] : $settings["default_sessions_timeout"];
+  $date_format      = (isset($account_info["date_format"])) ? $account_info["date_format"] : $settings["default_date_format"];
+  $login_page       = (isset($account_info["login_page"])) ? $account_info["login_page"] : $settings["default_login_page"];
+  $logout_url       = (isset($account_info["logout_url"])) ? $account_info["logout_url"] : $settings["default_logout_url"];
+  $theme            = (isset($account_info["theme"])) ? $account_info["theme"] : $settings["default_theme"];
+  $menu_id          = (isset($account_info["menu_id"])) ? $account_info["menu_id"] : $settings["default_client_menu_id"];
 
 
-	// first, insert the record into the accounts table. This contains all the settings common to ALL
-	// accounts (including the administrator and any other future account types)
-	$query = "
-		 INSERT INTO {$g_table_prefix}accounts (account_type, account_status, ui_language, timezone_offset, sessions_timeout,
-		   date_format, login_page, logout_url, theme, menu_id, first_name, last_name, email, username, password)
-		 VALUES ('client', '$account_status', '$language', '$timezone_offset', '$sessions_timeout',
-		   '$date_format', '$login_page', '$logout_url', '$theme', $menu_id, '$first_name', '$last_name', '$email',
-		   '$username', '$password')
-		     ";
+  // first, insert the record into the accounts table. This contains all the settings common to ALL
+  // accounts (including the administrator and any other future account types)
+  $query = "
+     INSERT INTO {$g_table_prefix}accounts (account_type, account_status, ui_language, timezone_offset, sessions_timeout,
+       date_format, login_page, logout_url, theme, menu_id, first_name, last_name, email, username, password)
+     VALUES ('client', '$account_status', '$language', '$timezone_offset', '$sessions_timeout',
+       '$date_format', '$login_page', '$logout_url', '$theme', $menu_id, '$first_name', '$last_name', '$email',
+       '$username', '$password')
+         ";
 
   if (!mysql_query($query))
   {
-  	if ($g_api_debug)
-  	{
+    if ($g_api_debug)
+    {
       $page_vars = array("message_type" => "error", "error_code" => 709, "error_type" => "user",
         "debugging" => "Failed query in <b>" . __FUNCTION__ . "</b>: <i>$query</i> " . mysql_error());
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, $error_codes);
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, $error_codes);
   }
 
-	$new_user_id = mysql_insert_id();
+  $new_user_id = mysql_insert_id();
 
 
-	// now create all the custom client account settings, most of which are based on the default values
-	// in the settings table
-	$account_settings = array(
-	  "client_notes" => "",
-	  "company_name" => "",
+  // now create all the custom client account settings, most of which are based on the default values
+  // in the settings table
+  $account_settings = array(
+    "client_notes" => "",
+    "company_name" => "",
     "page_titles"          => $settings["default_page_titles"],
-	  "footer_text"          => $settings["default_footer_text"],
-	  "may_edit_page_titles" => $settings["clients_may_edit_page_titles"],
-	  "may_edit_footer_text" => $settings["clients_may_edit_footer_text"],
-	  "may_edit_theme"       => $settings["clients_may_edit_theme"],
-	  "may_edit_logout_url"  => $settings["clients_may_edit_logout_url"],
-	  "may_edit_language"    => $settings["clients_may_edit_ui_language"],
-	  "may_edit_timezone_offset"  => $settings["clients_may_edit_timezone_offset"],
-	  "may_edit_sessions_timeout" => $settings["clients_may_edit_sessions_timeout"],
-	  "may_edit_date_format"      => $settings["clients_may_edit_date_format"]
+    "footer_text"          => $settings["default_footer_text"],
+    "may_edit_page_titles" => $settings["clients_may_edit_page_titles"],
+    "may_edit_footer_text" => $settings["clients_may_edit_footer_text"],
+    "may_edit_theme"       => $settings["clients_may_edit_theme"],
+    "may_edit_logout_url"  => $settings["clients_may_edit_logout_url"],
+    "may_edit_language"    => $settings["clients_may_edit_ui_language"],
+    "may_edit_timezone_offset"  => $settings["clients_may_edit_timezone_offset"],
+    "may_edit_sessions_timeout" => $settings["clients_may_edit_sessions_timeout"],
+    "may_edit_date_format"      => $settings["clients_may_edit_date_format"]
   );
   ft_set_account_settings($new_user_id, $account_settings);
 
@@ -1199,67 +1199,67 @@ function ft_api_create_client_account($account_info)
  */
 function ft_api_update_client_account($account_id, $info)
 {
-	global $g_table_prefix, $g_api_debug;
+  global $g_table_prefix, $g_api_debug;
 
 
-	// check the account ID is valid
-	$account_id = ft_sanitize($account_id);
-	$info = ft_sanitize($info);
-	$account_info = ft_get_account_info($account_id);
+  // check the account ID is valid
+  $account_id = ft_sanitize($account_id);
+  $info = ft_sanitize($info);
+  $account_info = ft_get_account_info($account_id);
 
 
-	// check the account ID was valid (i.e. the account exists) and that it's a CLIENT account
-	if (!isset($account_info["account_id"]))
-	{
-  	if ($g_api_debug)
-  	{
+  // check the account ID was valid (i.e. the account exists) and that it's a CLIENT account
+  if (!isset($account_info["account_id"]))
+  {
+    if ($g_api_debug)
+    {
       $page_vars = array("message_type" => "error", "error_code" => 900, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, 900);
-	}
-	if ($account_info["account_type"] != "client")
-	{
-  	if ($g_api_debug)
-  	{
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 900);
+  }
+  if ($account_info["account_type"] != "client")
+  {
+    if ($g_api_debug)
+    {
       $page_vars = array("message_type" => "error", "error_code" => 901, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, 901);
-	}
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 901);
+  }
 
-	// get a list of the possible DB columns that can be updated
-	$valid_columns = array("account_status", "ui_language", "timezone_offset", "sessions_timeout", "date_format",
-	  "login_page", "logout_url", "theme", "menu_id", "first_name", "last_name", "email", "username", "password");
+  // get a list of the possible DB columns that can be updated
+  $valid_columns = array("account_status", "ui_language", "timezone_offset", "sessions_timeout", "date_format",
+    "login_page", "logout_url", "theme", "menu_id", "first_name", "last_name", "email", "username", "password");
 
-	$mysql_update_rows = array();
-	while (list($key, $value) = each($info))
-	{
-		// if something passed by the user isn't a valid column name, ignore it
-		if (!in_array($key, $valid_columns))
-		  continue;
+  $mysql_update_rows = array();
+  while (list($key, $value) = each($info))
+  {
+    // if something passed by the user isn't a valid column name, ignore it
+    if (!in_array($key, $valid_columns))
+      continue;
 
-		// if this is the password field, encrypt it!
-		if ($key == "password")
-		  $value = md5(md5($value));
+    // if this is the password field, encrypt it!
+    if ($key == "password")
+      $value = md5(md5($value));
 
-		$mysql_update_rows[] = "$key = '$value'";
-	}
+    $mysql_update_rows[] = "$key = '$value'";
+  }
 
-	if (empty($mysql_update_rows))
-	  return array(true, "");
+  if (empty($mysql_update_rows))
+    return array(true, "");
 
-	$update_lines = "SET " . join(",\n", $mysql_update_rows);
+  $update_lines = "SET " . join(",\n", $mysql_update_rows);
 
-	$query = "
-	  UPDATE {$g_table_prefix}accounts
+  $query = "
+    UPDATE {$g_table_prefix}accounts
     $update_lines
     WHERE account_id = $account_id
-	    ";
+      ";
 
   $result = mysql_query($query);
 
@@ -1267,16 +1267,16 @@ function ft_api_update_client_account($account_id, $info)
     return array(true, "");
   else
   {
-  	if ($g_api_debug)
-  	{
+    if ($g_api_debug)
+    {
       $page_vars = array("message_type" => "error", "error_code" => 902, "error_type" => "user",
-			    "debugging"=> "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
-			        ": <i>" . nl2br($query) . "</i><br /> " .  mysql_error());
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, 902);
+          "debugging"=> "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
+              ": <i>" . nl2br($query) . "</i><br /> " .  mysql_error());
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 902);
   }
 }
 
@@ -1299,38 +1299,38 @@ function ft_api_update_client_account($account_id, $info)
  */
 function ft_api_delete_client_account($account_id)
 {
-	global $g_api_debug;
+  global $g_api_debug;
 
-	$account_id = ft_sanitize($account_id);
-	$account_info = ft_get_account_info($account_id);
+  $account_id = ft_sanitize($account_id);
+  $account_info = ft_get_account_info($account_id);
 
-	// check the account ID was valid (i.e. the account exists) and that it's a CLIENT account
-	if (!isset($account_info["account_id"]))
-	{
-  	if ($g_api_debug)
-  	{
+  // check the account ID was valid (i.e. the account exists) and that it's a CLIENT account
+  if (!isset($account_info["account_id"]))
+  {
+    if ($g_api_debug)
+    {
       $page_vars = array("message_type" => "error", "error_code" => 800, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, 800);
-	}
-	if ($account_info["account_type"] != "client")
-	{
-  	if ($g_api_debug)
-  	{
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 800);
+  }
+  if ($account_info["account_type"] != "client")
+  {
+    if ($g_api_debug)
+    {
       $page_vars = array("message_type" => "error", "error_code" => 801, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, 801);
-	}
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 801);
+  }
 
-	ft_delete_client($account_id);
+  ft_delete_client($account_id);
 
-	return array(true, "");
+  return array(true, "");
 }
 
 
@@ -1345,18 +1345,18 @@ function ft_api_delete_client_account($account_id)
  */
 function ft_api_delete_unfinalized_submissions($form_id, $delete_all = false)
 {
-	global $g_table_prefix, $g_api_debug;
+  global $g_table_prefix, $g_api_debug;
 
   if (!ft_check_form_exists($form_id))
   {
-  	if ($g_api_debug)
-  	{
+    if ($g_api_debug)
+    {
       $page_vars = array("message_type" => "error", "error_code" => 650, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, 650);
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 650);
   }
 
   $time_clause = (!$delete_all) ? "AND DATE_ADD(submission_date, INTERVAL 2 HOUR) < curdate()" : "";
@@ -1377,14 +1377,14 @@ function ft_api_delete_unfinalized_submissions($form_id, $delete_all = false)
   $file_field_info = array(); // a hash of col_name => file upload dir
   foreach ($form_fields as $field_info)
   {
-  	if ($field_info["field_type"] == "file")
-  	{
-  		$field_id = $field_info["field_id"];
-  		$col_name = $field_info["col_name"];
-  		$extended_settings = ft_get_extended_field_settings($field_id);
+    if ($field_info["field_type"] == "file")
+    {
+      $field_id = $field_info["field_id"];
+      $col_name = $field_info["col_name"];
+      $extended_settings = ft_get_extended_field_settings($field_id);
 
-  		$file_field_info[$col_name] = $extended_settings["file_upload_dir"];
-  	}
+      $file_field_info[$col_name] = $extended_settings["file_upload_dir"];
+    }
   }
 
 
@@ -1397,7 +1397,7 @@ function ft_api_delete_unfinalized_submissions($form_id, $delete_all = false)
     while (list($col_name, $file_upload_dir) = each($file_field_info))
     {
       if (!empty($submission_info[$col_name]))
-      	@unlink("{$file_upload_dir}/{$submission_info[$col_name]}");
+        @unlink("{$file_upload_dir}/{$submission_info[$col_name]}");
     }
     reset($file_field_info);
 
@@ -1421,22 +1421,22 @@ function ft_api_delete_unfinalized_submissions($form_id, $delete_all = false)
  */
 function ft_api_display_captcha()
 {
-	global $g_api_debug, $g_api_recaptcha_public_key, $g_api_recaptcha_private_key, $g_api_recaptcha_error;
+  global $g_api_debug, $g_api_recaptcha_public_key, $g_api_recaptcha_private_key, $g_api_recaptcha_error;
 
-	$folder = dirname(__FILE__);
-	require_once("$folder/recaptchalib.php");
+  $folder = dirname(__FILE__);
+  require_once("$folder/recaptchalib.php");
 
   // check the two recaptcha keys have been defined
   if (empty($g_api_recaptcha_public_key) || empty($g_api_recaptcha_private_key))
   {
-  	if ($g_api_debug)
-  	{
-		  $page_vars = array("message_type" => "error", "error_code" => 600, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-  	}
-  	else
-  		return array(false, 600);
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 600, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 600);
   }
 
   echo recaptcha_get_html($g_api_recaptcha_public_key, $g_api_recaptcha_error);
@@ -1452,75 +1452,89 @@ function ft_api_display_captcha()
  *   database column name and the value is the current value being tested. For instance, if you wanted to check
  *   that no-one has submitted a form with a particular email address, you could pass
  *   array("email" => "myemail@whatever.com) as the second parameter (where "email" is the database column name).
+ * @param integer $current_submission_id if this value is set, the function ignores that submission when doing
+ *   a comparison.
  */
-function ft_api_check_submission_is_unique($form_id, $criteria)
+function ft_api_check_submission_is_unique($form_id, $criteria, $current_submission_id = "")
 {
-	global $g_api_debug, $g_table_prefix;
+  global $g_api_debug, $g_table_prefix;
 
-	// confirm the form is valid
-	if (!ft_check_form_exists($form_id))
-	{
-		if ($g_api_debug)
-		{
-		  $page_vars = array("message_type" => "error", "error_code" => 550, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-		}
-		else
-		  return array(false, 550);
-	}
+  // confirm the form is valid
+  if (!ft_check_form_exists($form_id))
+  {
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 550, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 550);
+  }
 
   if (!is_array($criteria))
   {
-		if ($g_api_debug)
-		{
-	  	$page_vars = array("message_type" => "error", "error_code" => 551, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-		}
-		else
-		  return array(false, 551);
-	}
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 551, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 551);
+  }
 
   $where_clauses = array();
-	while (list($col_name, $value) = each($criteria))
-	{
-		if (empty($col_name))
-		{
-			if ($g_api_debug)
-			{
-				$page_vars = array("message_type" => "error", "error_code" => 552, "error_type" => "user");
-			  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-			  exit;
-			}
-			else
-			  return array(false, 552);
-		}
+  while (list($col_name, $value) = each($criteria))
+  {
+    if (empty($col_name))
+    {
+      if ($g_api_debug)
+      {
+        $page_vars = array("message_type" => "error", "error_code" => 552, "error_type" => "user");
+        ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+        exit;
+      }
+      else
+        return array(false, 552);
+    }
 
     $where_clauses[] = "$col_name = '" . ft_sanitize($value) . "'";
-	}
+  }
 
   if (empty($where_clauses))
   {
-  	if ($g_api_debug)
-		{
-	  	$page_vars = array("message_type" => "error", "error_code" => 553, "error_type" => "user");
-		  ft_display_page("../../global/smarty/messages.tpl", $page_vars);
-		  exit;
-		}
-		else
-		  return array(false, 553);
+    if ($g_api_debug)
+    {
+      $page_vars = array("message_type" => "error", "error_code" => 553, "error_type" => "user");
+      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      exit;
+    }
+    else
+      return array(false, 553);
+  }
+
+  if (!empty($current_submission_id))
+  {
+    $where_clauses[] = "submission_id != $current_submission_id";
   }
 
   $where_clause = "WHERE " . join(" AND ", $where_clauses);
 
-  $query = mysql_query("
+  $query = @mysql_query("
     SELECT count(*) as c
     FROM {$g_table_prefix}form_{$form_id}
     $where_clause
     ");
 
-  $result = mysql_fetch_assoc($query);
+  if ($query)
+    $result = mysql_fetch_assoc($query);
+  else
+  {
+    $page_vars = array("message_type" => "error", "error_code" => 554, "error_type" => "user");
+    ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+    exit;
+  }
 
   return $result["c"] == 0;
 }
@@ -1532,11 +1546,11 @@ function ft_api_check_submission_is_unique($form_id, $criteria)
  */
 function ft_api_start_sessions()
 {
-	global $g_api_header_charset;
+  global $g_api_header_charset;
 
-	session_start();
-	header("Cache-control: private");
-	header("Content-Type: text/html; charset=$g_api_header_charset");
+  session_start();
+  header("Cache-control: private");
+  header("Content-Type: text/html; charset=$g_api_header_charset");
 }
 
 
@@ -1549,15 +1563,15 @@ function ft_api_start_sessions()
 function ft_api_display_post_form_captcha_error($message = "")
 {
   if (!isset($_SESSION["form_tools_form_data"]))
-	  return;
+    return;
 
   if (isset($_SESSION["form_tools_form_data"]["api_recaptcha_error"]) && !empty($_SESSION["form_tools_form_data"]["api_recaptcha_error"]))
-	{
-	  if ($message)
-		  echo $message;
-		else
-		  echo "Sorry, the CAPTCHA (image verification) was entered incorrectly. Please try again.";
-	}
+  {
+    if ($message)
+      echo $message;
+    else
+      echo "Sorry, the CAPTCHA (image verification) was entered incorrectly. Please try again.";
+  }
 
-	$_SESSION["form_tools_form_data"]["api_recaptcha_error"] = "";
+  $_SESSION["form_tools_form_data"]["api_recaptcha_error"] = "";
 }
