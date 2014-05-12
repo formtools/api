@@ -7,7 +7,7 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.1.2";
+$g_api_version = "1.1.3";
 $g_api_recaptcha_error = null;
 
 // import the main library file
@@ -579,7 +579,7 @@ function ft_api_process_form($params)
   $has_captcha   = isset($form_data["recaptcha_response_field"]) ? true : false;
   $no_sessions_url    = isset($params["no_sessions_url"]) ? $params["no_sessions_url"] : false;
 
-  if (empty($form_id) || empty($submission_id))
+  if (!isset($_GET["ft_sessions_url_override"]) && (empty($form_id) || empty($submission_id)))
   {
     if (!empty($no_sessions_url))
     {
