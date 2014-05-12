@@ -7,13 +7,12 @@
 
 // ------------------------------------------------------------------------------------------------
 
-$g_api_version = "1.1.1";
+$g_api_version = "1.1.2";
 $g_api_recaptcha_error = null;
 
 // import the main library file
 $g_check_ft_sessions = false;
-$folder = dirname(__FILE__);
-require_once("$folder/../library.php");
+require_once(realpath(dirname(__FILE__) . "/../library.php"));
 
 
 /**
@@ -78,7 +77,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 400, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("../../error.tpl", $page_vars);
       exit;
     }
     else
@@ -94,7 +93,7 @@ function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num 
     if ($g_api_debug)
     {
       $page_vars = array("message_type" => "error", "error_code" => 401, "error_type" => "user");
-      ft_display_page("../../global/smarty/messages.tpl", $page_vars);
+      ft_display_page("../../error.tpl", $page_vars);
       exit;
     }
     else
