@@ -10,6 +10,8 @@ use PDO, Exception;
 
 class API
 {
+    public static $systemErrors = array(304);
+
     /**
      * This function lets you display the content generated from an export type into a webpage. You can
      * use this function on any export type in the database - even the ones that have been marked as "hidden". Note:
@@ -56,17 +58,10 @@ class API
     public static function showSubmissions($form_id, $view_id, $export_type_id, $page_num = 1, $options = array())
     {
         $db = Core::$db;
-        $api_debug = Core::isAPIDebugEnabled();
         $smarty = Core::$smarty;
 
         if (!Modules::checkModuleEnabled("export_manager")) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 400, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 400);
-            }
+            return self::processError(400);
         }
 
         // check the form ID, View ID and export ID are valid
@@ -75,16 +70,7 @@ class API
         $db->execute();
 
         if ($db->fetch(PDO::FETCH_COLUMN) === 0) {
-            if ($api_debug) {
-                Themes::displayPage("error.tpl", array(
-                    "message_type" => "error",
-                    "error_code" => 401,
-                    "error_type" => "user"
-                ));
-                exit;
-            } else {
-                return array(false, 401);
-            }
+            return self::processError(401);
         }
 
         $db->query("
@@ -98,16 +84,7 @@ class API
         ));
         $db->execute();
         if ($db->fetch(PDO::FETCH_COLUMN) == 0) {
-            if ($api_debug) {
-                Themes::displayPage("error.tpl", array(
-                    "message_type" => "error",
-                    "error_code" => 402,
-                    "error_type" => "user"
-                ));
-                exit;
-            } else {
-                return array(false, 402);
-            }
+            return self::processError(402);
         }
 
         $db->query("SELECT count(*) FROM {PREFIX}module_export_types WHERE export_type_id = :export_type_id");
@@ -115,16 +92,7 @@ class API
         $db->execute();
 
         if ($db->fetch(PDO::FETCH_COLUMN) == 0) {
-            if ($api_debug) {
-                Themes::displayPage("error.tpl", array(
-                    "message_type" => "error",
-                    "error_code" => 403,
-                    "error_type" => "user"
-                ));
-                exit;
-            } else {
-                return array(false, 403);
-            }
+            return self::processError(403);
         }
 
         // okay, now lets figure out what needs to be displayed & rendered
@@ -252,16 +220,7 @@ class API
 
             // in case the user entered an invalid value
             default:
-                if ($api_debug) {
-                    Themes::displayPage("error.tpl", array(
-                        "message_type" => "error",
-                        "error_code" => 404,
-                        "error_type" => "user"
-                    ));
-                    exit;
-                } else {
-                    return array(false, 404);
-                }
+                return self::processError(404);
                 break;
         }
 
@@ -311,20 +270,16 @@ class API
      * @param boolean $finalized whether or not the submission should be finalized. False by default.
      * @param array $default_values a hash of Database Columns => Values, letting you init the submission with those
      *    values entered.
-     * @return integer $submission_id returns the new submission ID, or false if the form ID was invalid
-     *     or the insert query failed.
+     * @return mixed $submission_id returns the new submission ID if successful. If there's an error, it either
+     *   redirects to an error page or returns the error info. This depends on your $g_api_debug setting in your
+     *   config.php file.
      */
     public static function createBlankSubmission($form_id, $finalized = false, $values = array())
     {
         $db = Core::$db;
 
         if (!Forms::checkFormExists($form_id)) {
-            Themes::displayPage("error.tpl", array(
-                "message_type" => "error",
-                "error_code" => 500,
-                "error_type" => "user"
-            ));
-            exit;
+            return self::processError(500);
         }
 
         $now = General::getCurrentDatetime();
@@ -343,13 +298,7 @@ class API
             $db->bindAll($values);
             $db->execute();
         } catch (Exception $e) {
-            Themes::displayPage("error.tpl", array(
-                "message_type" => "error",
-                "error_code" => 501,
-                "error_type" => "user",
-                "debugging" => $e->getMessage()
-            ));
-            exit;
+            return self::processError(501, array("debugging" => $e->getMessage()));
         }
 
         return $db->getInsertId();
@@ -420,12 +369,7 @@ class API
                     break;
 
                 default:
-                    Themes::displayPage("error.tpl", array(
-                        "message_type" => "error",
-                        "error_code" => 200,
-                        "error_type" => "user"
-                    ));
-                    exit;
+                    return self::processError(200);
                     break;
             }
         }
@@ -488,23 +432,13 @@ class API
         $multi_val_delimiter = Core::getMultiFieldValDelimiter();
         $LANG = Core::$L;
         $db = Core::$db;
-        $api_debug = Core::isAPIDebugEnabled();
         $recaptcha_private_key = Core::getAPIRecaptchaPrivateKey();
 
         // $g_api_recaptcha_error; ???
 
         // the form data parameter must ALWAYS be defined
         if (!isset($params["form_data"])) {
-            if ($api_debug) {
-                Themes::displayPage("error.tpl", array(
-                    "message_type" => "error",
-                    "error_code" => 306,
-                    "error_type" => "user"
-                ));
-                exit;
-            } else {
-                return array(false, 306);
-            }
+            return self::processError(306);
         }
 
         // special case: if "form_tools_delete_image_field__[fieldname]" exists, the user is just deleting an image
@@ -533,17 +467,7 @@ class API
 
         // check the submission exists
         if (is_numeric($form_id) && is_numeric($submission_id) && !Submissions::checkSubmissionExists($form_id, $submission_id)) {
-            if ($api_debug) {
-                Themes::displayPage("error.tpl", array(
-                    "message_type" => "error",
-                    "error_code" => 305,
-                    "error_type" => "user",
-                    "debugging" => "{$LANG["phrase_submission_id"]}: $submission_id"
-                ));
-                exit;
-            } else {
-                return array(false, 305);
-            }
+            return self::processError(305, array("debugging" => "{$LANG["phrase_submission_id"]}: $submission_id"));
         }
 
         // extract the submission ID and form ID from sessions
@@ -558,16 +482,7 @@ class API
                 header("location: $no_sessions_url");
                 exit;
             } else {
-                if ($api_debug) {
-                    Themes::displayPage("error.tpl", array(
-                        "message_type" => "error",
-                        "error_code" => 300,
-                        "error_type" => "user"
-                    ));
-                    exit;
-                } else {
-                    return array(false, 300);
-                }
+                return self::processError(300);
             }
         }
 
@@ -610,31 +525,12 @@ class API
             else {
                 // check the form ID is valid
                 if (!Forms::checkFormExists($form_id)) {
-                    if ($api_debug) {
-                        Themes::displayPage("error.tpl", array(
-                            "message_type" => "error",
-                            "error_code" => 301,
-                            "error_type" => "user"
-                        ));
-                        exit;
-                    } else {
-                        return array(false, 301);
-                    }
+                    return self::processError(301);
                 }
 
                 // check the submission ID isn't finalized
                 if (!$may_update_finalized_submissions && Submissions::checkSubmissionFinalized($form_id, $submission_id)) {
-                    if ($api_debug) {
-                        Themes::displayPage("error.tpl", array(
-                            "message_type" => "error",
-                            "error_code" => 302,
-                            "error_type" => "user",
-                            "debugging" => "{$LANG["phrase_submission_id"]}: $submission_id"
-                        ));
-                        exit;
-                    } else {
-                        return array(false, 302);
-                    }
+                    return self::processError(302, array("debugging" => "{$LANG["phrase_submission_id"]}: $submission_id"));
                 }
 
                 $form_info = Forms::getForm($form_id);
@@ -645,16 +541,7 @@ class API
                         header("location: {$form_data["form_tools_inactive_form_redirect_url"]}");
                         exit;
                     }
-                    if ($api_debug) {
-                        Themes::displayPage("error.tpl", array(
-                            "message_type" => "error",
-                            "error_code" => 303,
-                            "error_type" => "user"
-                        ));
-                        exit;
-                    } else {
-                        return array(false, 303);
-                    }
+                    return self::processError(303);
                 }
 
                 extract(Hooks::processHookCalls("start", compact("form_info", "form_id", "form_data"), array("form_data")), EXTR_OVERWRITE);
@@ -720,7 +607,6 @@ class API
                 $ip_address = $_SERVER["REMOTE_ADDR"];
                 $is_finalized = ($finalize) ? "yes" : "no";
 
-
                 $set_statements = $db->getUpdateStatements($valid_form_fields);
 
                 // in this section, we update the database submission info & upload files. Note: we don't do ANYTHING
@@ -764,19 +650,10 @@ class API
 
                     // only process the query if the form_tools_ignore_submission key isn't defined
                     if (!mysql_query($query)) {
-                        if ($api_debug) {
-                            $page_vars = array(
-                                "message_type" => "error",
-                                "error_code" => 304,
-                                "error_type" => "system",
-                                "debugging" => "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
-                                    ": <i>" . nl2br($query) . "</i> " . mysql_error()
-                            );
-                            Themes::displayPage("error.tpl", $page_vars);
-                            exit;
-                        } else {
-                            return array(false, 304);
-                        }
+                        return self::processError(304, array(
+                            "debugging" => "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
+                                ": " . $e->getMessage()
+                        ));
                     }
 
                     // used for uploading files. The error handling is incomplete here, like previous versions. Although the hooks
@@ -930,7 +807,7 @@ class API
      */
     function ft_api_login($info)
     {
-        global $g_root_url, $g_table_prefix, $LANG, $api_debug;
+        global $g_root_url, $g_table_prefix, $LANG;
 
         $username = ft_sanitize($info["username"]);
         $password = isset($info["password"]) ? ft_sanitize($info["password"]) : "";
@@ -944,53 +821,23 @@ class API
         $account_info = mysql_fetch_assoc($query);
 
         if (empty($password)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 1000, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 1000);
-            }
+            return self::processError(1000);
         }
 
         if (empty($account_info)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 1004, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 1004);
-            }
+            return self::processError(1004);
         }
 
         if ($account_info["account_status"] == "disabled") {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 1001, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 1001);
-            }
+            return self::processError(1001);
         }
 
         if ($account_info["account_status"] == "pending") {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 1002, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 1002);
-            }
+            return self::processError(1002);
         }
 
         if (md5(md5($password)) != $account_info["password"]) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 1003, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 1003);
-            }
+            return self::processError(1003);
         }
 
 
@@ -1055,11 +902,10 @@ class API
      * @return array [0] true / false
      *               [1] an array of error codes (if false) or the new account ID
      */
-    function ft_api_create_client_account($account_info)
+    public static function createClientAccount($account_info)
     {
-        global $api_debug, $g_table_prefix;
-
-        $account_info = ft_sanitize($account_info);
+        $db = Core::$db;
+        $api_debug = Core::isAPIDebugEnabled();
 
         $error_codes = array();
 
@@ -1073,7 +919,7 @@ class API
         if (!isset($account_info["email"]) || empty($account_info["email"])) {
             $error_codes[] = 702;
         }
-        if (!ft_is_valid_email($account_info["email"])) {
+        if (!General::isValidEmail($account_info["email"])) {
             $error_codes[] = 703;
         }
 
@@ -1083,7 +929,7 @@ class API
             if (preg_match('/[^A-Za-z0-9]/', $account_info["username"])) {
                 $error_codes[] = 705;
             }
-            if (!_ft_is_valid_username($account_info["username"])) {
+            if (!Accounts::isValidUsername($account_info["username"])) {
                 $error_codes[] = 706;
             }
         }
@@ -1106,14 +952,7 @@ class API
             }
         }
 
-
-        $first_name = $account_info["first_name"];
-        $last_name = $account_info["last_name"];
-        $email = $account_info["email"];
-        $username = $account_info["username"];
-        $password = md5(md5($account_info["password"]));
-
-        $settings = ft_get_settings();
+        $settings = Settings::get();
         $account_status = (isset($account_info["account_status"])) ? $account_info["account_status"] : "pending";
         $language = (isset($account_info["ui_language"])) ? $account_info["ui_language"] : $settings["default_language"];
         $timezone_offset = (isset($account_info["timezone_offset"])) ? $account_info["timezone_offset"] : $settings["default_timezone_offset"];
@@ -1124,51 +963,59 @@ class API
         $theme = (isset($account_info["theme"])) ? $account_info["theme"] : $settings["default_theme"];
         $menu_id = (isset($account_info["menu_id"])) ? $account_info["menu_id"] : $settings["default_client_menu_id"];
 
-        // first, insert the record into the accounts table. This contains all the settings common to ALL
-        // accounts (including the administrator and any other future account types)
-        $query = "
-     INSERT INTO {PREFIX}accounts (account_type, account_status, ui_language, timezone_offset, sessions_timeout,
-       date_format, login_page, logout_url, theme, menu_id, first_name, last_name, email, username, password)
-     VALUES ('client', '$account_status', '$language', '$timezone_offset', '$sessions_timeout',
-       '$date_format', '$login_page', '$logout_url', '$theme', $menu_id, '$first_name', '$last_name', '$email',
-       '$username', '$password')
-         ";
-
-        if (!mysql_query($query)) {
-            if ($api_debug) {
-                $page_vars = array(
-                "message_type" => "error",
-                "error_code" => 709,
-                "error_type" => "user",
-                "debugging" => "Failed query in <b>" . __FUNCTION__ . "</b>: <i>$query</i> " . mysql_error()
-                );
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, $error_codes);
-            }
+        try {
+            // first, insert the record into the accounts table. This contains all the settings common to ALL
+            // accounts (including the administrator and any other future account types)
+            $db->query("
+                INSERT INTO {PREFIX}accounts (account_type, account_status, ui_language, timezone_offset, sessions_timeout,
+                    date_format, login_page, logout_url, theme, menu_id, first_name, last_name, email, username, password)
+                VALUES (:account_type, :account_status, :ui_language, :timezone_offset, :sessions_timeout,
+                    :date_format, :login_page, :logout_url, :theme, :menu_id, :first_name, :last_name, :email,
+                    :username, :password)
+            ");
+            $db->bindAll(array(
+                "account_type" => "client",
+                "account_status" => $account_status,
+                "ui_language" => $language,
+                "timezone_offset" => $timezone_offset,
+                "sessions_timeout" => $sessions_timeout,
+                "date_format" => $date_format,
+                "login_page" => $login_page,
+                "logout_url" => $logout_url,
+                "theme" => $theme,
+                "menu_id" => $menu_id,
+                "first_name" => $account_info["first_name"],
+                "last_name" => $account_info["last_name"],
+                "email" => $account_info["email"],
+                "username" => $account_info["username"],
+                "password" => General::encode($account_info["password"])
+            ));
+            $db->execute();
+        } catch (Exception $e) {
+            return self::processError(709, array(
+                "debugging" => "Failed query in <b>" . __FUNCTION__ . "</b>: " . $e->getMessage()
+            ));
         }
 
-        $new_user_id = mysql_insert_id();
-
+        $new_user_id = $db->getInsertId();
 
         // now create all the custom client account settings, most of which are based on the default values
         // in the settings table
         $account_settings = array(
-        "client_notes" => "",
-        "company_name" => "",
-        "page_titles" => $settings["default_page_titles"],
-        "footer_text" => $settings["default_footer_text"],
-        "may_edit_page_titles" => $settings["clients_may_edit_page_titles"],
-        "may_edit_footer_text" => $settings["clients_may_edit_footer_text"],
-        "may_edit_theme" => $settings["clients_may_edit_theme"],
-        "may_edit_logout_url" => $settings["clients_may_edit_logout_url"],
-        "may_edit_language" => $settings["clients_may_edit_ui_language"],
-        "may_edit_timezone_offset" => $settings["clients_may_edit_timezone_offset"],
-        "may_edit_sessions_timeout" => $settings["clients_may_edit_sessions_timeout"],
-        "may_edit_date_format" => $settings["clients_may_edit_date_format"]
+            "client_notes" => "",
+            "company_name" => "",
+            "page_titles" => $settings["default_page_titles"],
+            "footer_text" => $settings["default_footer_text"],
+            "may_edit_page_titles" => $settings["clients_may_edit_page_titles"],
+            "may_edit_footer_text" => $settings["clients_may_edit_footer_text"],
+            "may_edit_theme" => $settings["clients_may_edit_theme"],
+            "may_edit_logout_url" => $settings["clients_may_edit_logout_url"],
+            "may_edit_language" => $settings["clients_may_edit_ui_language"],
+            "may_edit_timezone_offset" => $settings["clients_may_edit_timezone_offset"],
+            "may_edit_sessions_timeout" => $settings["clients_may_edit_sessions_timeout"],
+            "may_edit_date_format" => $settings["clients_may_edit_date_format"]
         );
-        ft_set_account_settings($new_user_id, $account_settings);
+        Accounts::setAccountSettings($new_user_id, $account_settings);
 
         return array(true, $new_user_id);
     }
@@ -1180,10 +1027,8 @@ class API
      * @param integer $account_id
      * @param array $info an array of keys to update, corresponding to the columns in the accounts table.
      */
-    function ft_api_update_client_account($account_id, $info)
+    public static function updateClientAccount($account_id, $info)
     {
-        global $g_table_prefix, $api_debug;
-
         // check the account ID is valid
         $account_id = ft_sanitize($account_id);
         $info = ft_sanitize($info);
@@ -1191,40 +1036,28 @@ class API
 
         // check the account ID was valid (i.e. the account exists) and that it's a CLIENT account
         if (!isset($account_info["account_id"])) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 900, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 900);
-            }
+            return self::processError(900);
         }
         if ($account_info["account_type"] != "client") {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 901, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 901);
-            }
+            return self::processError(901);
         }
 
         // get a list of the possible DB columns that can be updated
         $valid_columns = array(
-        "account_status",
-        "ui_language",
-        "timezone_offset",
-        "sessions_timeout",
-        "date_format",
-        "login_page",
-        "logout_url",
-        "theme",
-        "menu_id",
-        "first_name",
-        "last_name",
-        "email",
-        "username",
-        "password"
+            "account_status",
+            "ui_language",
+            "timezone_offset",
+            "sessions_timeout",
+            "date_format",
+            "login_page",
+            "logout_url",
+            "theme",
+            "menu_id",
+            "first_name",
+            "last_name",
+            "email",
+            "username",
+            "password"
         );
 
         $mysql_update_rows = array();
@@ -1236,7 +1069,7 @@ class API
 
             // if this is the password field, encrypt it!
             if ($key == "password") {
-                $value = md5(md5($value));
+                $value = General::encode($value);
             }
 
             $mysql_update_rows[] = "$key = '$value'";
@@ -1249,29 +1082,20 @@ class API
         $update_lines = "SET " . join(",\n", $mysql_update_rows);
 
         $query = "
-    UPDATE {PREFIX}accounts
-    $update_lines
-    WHERE account_id = $account_id
-      ";
+            UPDATE {PREFIX}accounts
+            $update_lines
+            WHERE account_id = $account_id
+        ";
 
         $result = mysql_query($query);
 
         if ($result) {
             return array(true, "");
         } else {
-            if ($api_debug) {
-                $page_vars = array(
-                "message_type" => "error",
-                "error_code" => 902,
-                "error_type" => "user",
-                "debugging" => "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
-                ": <i>" . nl2br($query) . "</i><br /> " . mysql_error()
-                );
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 902);
-            }
+            return self::processError(902, array(
+                "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
+                    ": " . $e->getMessage()
+            ));
         }
     }
 
@@ -1292,34 +1116,19 @@ class API
      *                   [0] false
      *                   [1] the API error code
      */
-    function ft_api_delete_client_account($account_id)
+    public static function deleteClientAccount($account_id)
     {
-        global $api_debug;
-
-        $account_id = ft_sanitize($account_id);
-        $account_info = ft_get_account_info($account_id);
+        $account_info = Accounts::getAccountInfo($account_id);
 
         // check the account ID was valid (i.e. the account exists) and that it's a CLIENT account
         if (!isset($account_info["account_id"])) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 800, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 800);
-            }
+            return self::processError(800);
         }
         if ($account_info["account_type"] != "client") {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 801, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 801);
-            }
+            return self::processError(801);
         }
 
-        ft_delete_client($account_id);
+        Clients::deleteClient($account_id);
 
         return array(true, "");
     }
@@ -1334,64 +1143,59 @@ class API
      *
      * @return integer the number of unfinalized submissions that were just deleted
      */
-    function ft_api_delete_unfinalized_submissions($form_id, $delete_all = false)
+    public static function deleteUnfinalizedSubmissions($form_id, $delete_all = false)
     {
-        global $g_table_prefix, $api_debug;
+        $db = Core::$db;
 
         if (!Forms::checkFormExists($form_id)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 650, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 650);
-            }
+            return self::processForm(650);
         }
 
         $time_clause = (!$delete_all) ? "AND DATE_ADD(submission_date, INTERVAL 2 HOUR) < curdate()" : "";
-        $query = mysql_query("
-    SELECT *
-    FROM   {PREFIX}form_{$form_id}
-    WHERE  is_finalized = 'no'
-    $time_clause
-      ");
+        $db->query("
+            SELECT *
+            FROM   {PREFIX}form_{$form_id}
+            WHERE  is_finalized = 'no'
+            $time_clause
+        ");
+        $db->execute();
+        $submissions = $db->fetchAll();
 
-        if (mysql_num_rows($query) == 0) {
+        $num_rows = $db->numRows();
+        if ($num_rows == 0) {
             return 0;
         }
 
-
         // find out which of this form are file fields
-        $form_fields = ft_get_form_fields($form_id);
+        $form_fields = Fields::getFormFields($form_id);
 
         $file_field_info = array(); // a hash of col_name => file upload dir
         foreach ($form_fields as $field_info) {
             if ($field_info["field_type"] == "file") {
                 $field_id = $field_info["field_id"];
                 $col_name = $field_info["col_name"];
-                $extended_settings = ft_get_extended_field_settings($field_id);
-
+                $extended_settings = Fields::getExtendedFieldSettings($field_id);
                 $file_field_info[$col_name] = $extended_settings["file_upload_dir"];
             }
         }
 
-
         // now delete the info
-        while ($submission_info = mysql_fetch_assoc($query)) {
+        foreach ($submissions as $submission_info) {
             $submission_id = $submission_info["submission_id"];
 
             // delete any files associated with the submission
-            while (list($col_name, $file_upload_dir) = each($file_field_info)) {
+            foreach ($file_field_info as $col_name => $file_upload_dir) {
                 if (!empty($submission_info[$col_name])) {
                     @unlink("{$file_upload_dir}/{$submission_info[$col_name]}");
                 }
             }
-            reset($file_field_info);
 
-            mysql_query("DELETE FROM {PREFIX}form_{$form_id} WHERE submission_id = $submission_id");
+            $db->query("DELETE FROM {PREFIX}form_{$form_id} WHERE submission_id = :submission_id");
+            $db->bind("submission_id", $submission_id);
+            $db->execute();
         }
 
-        return mysql_num_rows($query);
+        return $num_rows;
     }
 
 
@@ -1406,22 +1210,15 @@ class API
      *                   [0] false
      *                   [1] the API error code
      */
-    function ft_api_display_captcha()
+    public static function displayCaptcha()
     {
-        global $api_debug, $g_api_recaptcha_public_key, $g_api_recaptcha_private_key, $g_api_recaptcha_error;
+        global $g_api_recaptcha_public_key, $g_api_recaptcha_private_key, $g_api_recaptcha_error;
 
-        $folder = dirname(__FILE__);
-        require_once("$folder/recaptchalib.php");
+        require_once("./recaptchalib.php");
 
         // check the two recaptcha keys have been defined
         if (empty($g_api_recaptcha_public_key) || empty($g_api_recaptcha_private_key)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 600, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 600);
-            }
+            return self::processError(600);
         }
 
         echo recaptcha_get_html($g_api_recaptcha_public_key, $g_api_recaptcha_error);
@@ -1440,54 +1237,28 @@ class API
      * @param integer $current_submission_id if this value is set, the function ignores that submission when doing
      *   a comparison.
      */
-    function ft_api_check_submission_is_unique($form_id, $criteria, $current_submission_id = "")
+    public static function checkSubmissionIsUnique($form_id, $criteria, $current_submission_id = "")
     {
-        global $api_debug, $g_table_prefix;
-
         // confirm the form is valid
         if (!Forms::checkFormExists($form_id)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 550, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 550);
-            }
+            return self::processError(550);
         }
 
         if (!is_array($criteria)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 551, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 551);
-            }
+            return self::processError(551);
         }
 
         $where_clauses = array();
         while (list($col_name, $value) = each($criteria)) {
             if (empty($col_name)) {
-                if ($api_debug) {
-                    $page_vars = array("message_type" => "error", "error_code" => 552, "error_type" => "user");
-                    Themes::displayPage("error.tpl", $page_vars);
-                    exit;
-                } else {
-                    return array(false, 552);
-                }
+                return self::processError(552);
             }
 
             $where_clauses[] = "$col_name = '" . ft_sanitize($value) . "'";
         }
 
         if (empty($where_clauses)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 553, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 553);
-            }
+            return self::processError(553);
         }
 
         if (!empty($current_submission_id)) {
@@ -1497,17 +1268,15 @@ class API
         $where_clause = "WHERE " . join(" AND ", $where_clauses);
 
         $query = @mysql_query("
-    SELECT count(*) as c
-    FROM {PREFIX}form_{$form_id}
-    $where_clause
-    ");
+            SELECT count(*) as c
+            FROM {PREFIX}form_{$form_id}
+            $where_clause
+        ");
 
         if ($query) {
             $result = mysql_fetch_assoc($query);
         } else {
-            $page_vars = array("message_type" => "error", "error_code" => 554, "error_type" => "user");
-            Themes::displayPage("error.tpl", $page_vars);
-            exit;
+            return self::processError(554);
         }
 
         return $result["c"] == 0;
@@ -1520,7 +1289,7 @@ class API
      *
      * @param string $message the message to output if there was a problem with the CAPTCHA contents.
      */
-    function ft_api_display_post_form_captcha_error($message = "")
+    public static function displayPostFormCaptchaError($message = "")
     {
         if (!isset($_SESSION["form_tools_form_data"])) {
             return;
@@ -1548,39 +1317,46 @@ class API
      */
     public static function getSubmission($form_id, $submission_id)
     {
-        //$api_debug = Core::getDeb
+        $db = Core::$db;
 
         // confirm the form is valid
         if (!Forms::checkFormExists($form_id)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 405, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 405);
-            }
+            return self::processError(405);
         }
 
         if (!is_numeric($submission_id)) {
-            if ($api_debug) {
-                $page_vars = array("message_type" => "error", "error_code" => 406, "error_type" => "user");
-                Themes::displayPage("error.tpl", $page_vars);
-                exit;
-            } else {
-                return array(false, 406);
-            }
+            return self::processError(406);
         }
 
         // get the form submission info
-        $submission_info = mysql_query("
-     SELECT *
-     FROM   {PREFIX}form_{$form_id}
-     WHERE  submission_id = $submission_id
-              ");
+        $db->query("
+            SELECT *
+            FROM   {PREFIX}form_{$form_id}
+            WHERE  submission_id = :submission_id
+        ");
+        $db->bind("submission_id", $submission_id);
+        $db->execute();
 
-        $submission = mysql_fetch_assoc($submission_info);
-
-        return $submission;
+        return $db->fetch();
     }
 
+
+    private static function processError($error_code, $extra_info = array()) {
+        $api_debug = Core::isAPIDebugEnabled();
+
+        if ($api_debug) {
+            $is_system_error = in_array($error_code, self::$systemErrors);
+
+            $content = array_merge(array(
+                "error_code" => $error_code,
+                "message_type" => "error",
+                "error_type" => $is_system_error ? "system" : "user"
+            ), $extra_info);
+
+            Themes::displayPage("error.tpl", $content);
+            exit;
+        } else {
+            return array(false, $error_code);
+        }
+    }
 }
