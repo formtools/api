@@ -10,7 +10,13 @@ use PDO, Exception;
 
 class API
 {
-    public static $systemErrors = array(304);
+    private static $version = "2.0.0";
+    private static $systemErrors = array(304);
+
+
+    public static function getVersion() {
+        return self::$version;
+    }
 
     /**
      * This function lets you display the content generated from an export type into a webpage. You can
