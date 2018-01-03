@@ -610,9 +610,10 @@ class API
                 }
 
                 $now = General::getCurrentDatetime();
-                $ip_address = $_SERVER["REMOTE_ADDR"];
                 $is_finalized = ($finalize) ? "yes" : "no";
 
+                $valid_form_fields["last_modified_date"] = $now;
+                $valid_form_fields["ip_address"] = $_SERVER["REMOTE_ADDR"];
                 $set_statements = $db->getUpdateStatements($valid_form_fields);
 
                 // in this section, we update the database submission info & upload files. Note: we don't do ANYTHING
@@ -625,40 +626,39 @@ class API
                     if ($has_captcha && $finalize) {
                         $db->query("
                             UPDATE {PREFIX}form_$form_id
-                            SET    $set_query
-                                   last_modified_date = :last_modified_date,
-                                   ip_address = :ip_address,
+                            SET    $set_statements
                             WHERE  submission_id = :submission_id
                         ");
-                        $db->bindAll(array(
-                            "last_modified_date" => $now,
-                            "ip_address" => $ip_address,
-                            "submission_id" => $submission_id
-                        ));
-                        $db->execute();
+                        $db->bindAll($valid_form_fields);
+                        $db->bind("submission_id", $submission_id);
                     } else {
                         // only update the is_finalized setting if $may_update_finalized_submissions === false
                         if (!$finalize && $may_update_finalized_submissions) {
                             $is_finalized_clause = "";
                         } else {
-                            $is_finalized_clause = ", is_finalized = '$is_finalized'";
+                            $is_finalized_clause = ", is_finalized = :is_finalized";
                         }
 
-                        $query = "
+                        $db->query("
                             UPDATE {PREFIX}form_$form_id
-                            SET    $set_query
-                                   last_modified_date = '$now',
-                                   ip_address = '$ip_address'
+                            SET    $set_statements
                                    $is_finalized_clause
                             WHERE  submission_id = $submission_id
-                        ";
+                        ");
+                        $db->bindAll($valid_form_fields);
+                        $db->bind("submission_id", $submission_id);
+
+                        if (!empty($is_finalized_clause)) {
+                            $db->bind("is_finalized", $is_finalized);
+                        }
                     }
 
                     // only process the query if the form_tools_ignore_submission key isn't defined
-                    if (!mysql_query($query)) {
+                    try {
+                        $db->execute();
+                    } catch (Exception $e) {
                         return self::processError(304, array(
-                            "debugging" => "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
-                                ": " . $e->getMessage()
+                            "debugging" => "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ . ": " . $e->getMessage()
                         ));
                     }
 
@@ -685,7 +685,7 @@ class API
             $folder = dirname(__FILE__);
             require_once("$folder/recaptchalib.php");
 
-            $resp = recaptcha_check_answer($g_api_recaptcha_private_key, $_SERVER["REMOTE_ADDR"],
+            $resp = recaptcha_check_answer($recaptcha_private_key, $_SERVER["REMOTE_ADDR"],
             $recaptcha_challenge_field, $recaptcha_response_field);
 
             if ($resp->is_valid) {
@@ -693,11 +693,13 @@ class API
 
                 // if the developer wanted the submission to be finalized at this step, do so - it wasn't earlier!
                 if ($finalize) {
-                    mysql_query("
+                    $db->query("
                         UPDATE {PREFIX}form_$form_id
                         SET    is_finalized = 'yes'
-                        WHERE  submission_id = $submission_id
+                        WHERE  submission_id = :submission_id
                     ");
+                    $db->bind("submission_id", $submission_id);
+                    $db->execute();
                 }
             } else {
                 // register the recaptcha as a global, which can be picked up silently by ft_api_display_captcha to
@@ -716,7 +718,7 @@ class API
                 if (isset($params["send_emails"]) && $params["send_emails"] === true) {
                     Emails::sendEmails("on_submission", $form_id, $submission_id);
                 } else {
-                    if ($is_finalized == "yes" && (!isset($params["send_emails"]) || $params["send_emails"] !== false)) {
+                    if (isset($is_finalized) && $is_finalized == "yes" && (!isset($params["send_emails"]) || $params["send_emails"] !== false)) {
                         Emails::sendEmails("on_submission", $form_id, $submission_id);
                     }
                 }
@@ -783,16 +785,16 @@ class API
 
 
     /**
-     * Just a wrapper function for ft_load_field - renamed for consistency with the API. Plus it's good
+     * Just a wrapper function for General::loadField - renamed for consistency with the API. Plus it's good
      * to draw attention to this function with the additional documentation.
      *
      * @param string $field_name
      * @param string $session_name
      * @param string $default_value
      */
-    function ft_api_load_field($field_name, $session_name, $default_value)
+    public static function loadField($field_name, $session_name, $default_value)
     {
-        return ft_load_field($field_name, $session_name, $default_value);
+        return General::loadField($field_name, $session_name, $default_value);
     }
 
 
@@ -811,24 +813,17 @@ class API
      *     "login_url" - the URL to redirect to (if desired). If this isn't set, but auto_redirect_after_login IS,
      *         it will log the user in normally, to whatever login page they've specified in their account.
      */
-    function ft_api_login($info)
+    public static function login($info)
     {
-        global $g_root_url, $g_table_prefix, $LANG;
+        $root_url = Core::getRootUrl();
 
-        $username = ft_sanitize($info["username"]);
-        $password = isset($info["password"]) ? ft_sanitize($info["password"]) : "";
-
-        // extract info about this user's account
-        $query = mysql_query("
-    SELECT account_id, account_type, account_status, password, login_page
-    FROM   {PREFIX}accounts
-    WHERE  username = '$username'
-      ");
-        $account_info = mysql_fetch_assoc($query);
+        $password = isset($info["password"]) ? $info["password"] : "";
 
         if (empty($password)) {
             return self::processError(1000);
         }
+
+        $account_info = Accounts::getAccountByUsername($info["username"]);
 
         if (empty($account_info)) {
             return self::processError(1004);
@@ -848,24 +843,23 @@ class API
 
 
         // all checks out. Log them in, after populating sessions
-        $_SESSION["ft"]["settings"] = ft_get_settings("", "core"); // only load the core settings
-        $_SESSION["ft"]["account"] = ft_get_account_info($account_info["account_id"]);
+        $_SESSION["ft"]["settings"] = Settings::get("", "core"); // only load the core settings
+        $_SESSION["ft"]["account"] = Accounts::getAccountInfo($account_info["account_id"]);
         $_SESSION["ft"]["account"]["is_logged_in"] = true;
-        $_SESSION["ft"]["account"]["password"] = md5(md5($password));
+        $_SESSION["ft"]["account"]["password"] = General::encode($password);
 
-        ft_cache_account_menu($account_info["account_id"]);
+        Menus::cacheAccountMenu($account_info["account_id"]);
 
         // if this is an administrator, build and cache the upgrade link and ensure the API version is up to date
         if ($account_info["account_type"] == "admin") {
-            ft_update_api_version();
+            General::updateApiVersion();
             ft_build_and_cache_upgrade_info();
         }
 
         // for clients, store the forms & form Views that they are allowed to access
         if ($account_info["account_type"] == "client") {
-            $_SESSION["ft"]["permissions"] = ft_get_client_form_views($account_info["account_id"]);
+            $_SESSION["ft"]["permissions"] = Clients::getClientFormViews($account_info["account_id"]);
         }
-
 
         // redirect the user to whatever login page they specified in their settings
         if (isset($info["auto_redirect_after_login"]) && $info["auto_redirect_after_login"]) {
@@ -874,8 +868,8 @@ class API
                 header("Location: $login_url");
                 exit;
             } else {
-                $login_url = ft_construct_page_url($account_info["login_page"]);
-                $login_url = "$g_root_url{$login_url}";
+                $login_url = Pages::constructPageURL($account_info["login_page"]);
+                $login_url = "$root_url{$login_url}";
 
                 session_write_close();
                 header("Location: $login_url");
@@ -1147,14 +1141,14 @@ class API
      *    deletes all unfinalized submissions made 2 hours and older. This wards against accidentally deleting
      *    those submissions currently being put through.
      *
-     * @return integer the number of unfinalized submissions that were just deleted
+     * @return mixed the number of unfinalized submissions that were just deleted, or error.
      */
     public static function deleteUnfinalizedSubmissions($form_id, $delete_all = false)
     {
         $db = Core::$db;
 
         if (!Forms::checkFormExists($form_id)) {
-            return self::processForm(650);
+            return self::processError(650);
         }
 
         $time_clause = (!$delete_all) ? "AND DATE_ADD(submission_date, INTERVAL 2 HOUR) < curdate()" : "";
@@ -1218,7 +1212,10 @@ class API
      */
     public static function displayCaptcha()
     {
-        global $g_api_recaptcha_public_key, $g_api_recaptcha_private_key, $g_api_recaptcha_error;
+        $recaptcha_public_key = Core::getApiRecaptchaPublicKey();
+        $recaptcha_private_key = Core::getAPIRecaptchaPrivateKey();
+
+        //$g_api_recaptcha_error;
 
         require_once("./recaptchalib.php");
 
@@ -1245,6 +1242,8 @@ class API
      */
     public static function checkSubmissionIsUnique($form_id, $criteria, $current_submission_id = "")
     {
+        $db = Core::$db;
+
         // confirm the form is valid
         if (!Forms::checkFormExists($form_id)) {
             return self::processError(550);
@@ -1255,12 +1254,14 @@ class API
         }
 
         $where_clauses = array();
+        $placeholders = array();
         while (list($col_name, $value) = each($criteria)) {
             if (empty($col_name)) {
                 return self::processError(552);
             }
 
-            $where_clauses[] = "$col_name = '" . ft_sanitize($value) . "'";
+            $where_clauses[] = "$col_name = :$col_name";
+            $placeholders[$col_name] = $value;
         }
 
         if (empty($where_clauses)) {
@@ -1268,24 +1269,25 @@ class API
         }
 
         if (!empty($current_submission_id)) {
-            $where_clauses[] = "submission_id != $current_submission_id";
+            $where_clauses[] = "submission_id != :submission_id";
+            $where_clauses["submission_id"] = $current_submission_id;
         }
 
-        $where_clause = "WHERE " . join(" AND ", $where_clauses);
+        $where_clause_str = "WHERE " . join(" AND ", $where_clauses);
 
-        $query = @mysql_query("
-            SELECT count(*) as c
-            FROM {PREFIX}form_{$form_id}
-            $where_clause
-        ");
-
-        if ($query) {
-            $result = mysql_fetch_assoc($query);
-        } else {
+        try {
+            $db->query("
+                SELECT count(*)
+                FROM {PREFIX}form_{$form_id}
+                $where_clause_str
+            ");
+            $db->bindAll($placeholders);
+            $db->execute();
+        } catch (Exception $e) {
             return self::processError(554);
         }
 
-        return $result["c"] == 0;
+        return $db->numRows();
     }
 
 
@@ -1347,6 +1349,13 @@ class API
     }
 
 
+    /**
+     * Called for all API errors. If `$g_api_debug = true;` is set in the users' config.php file, this method
+     * redirects the user to a webpage containing details about the error, plus a link
+     * @param $error_code
+     * @param array $extra_info
+     * @return array
+     */
     private static function processError($error_code, $extra_info = array()) {
         $api_debug = Core::isAPIDebugEnabled();
 
