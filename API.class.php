@@ -14,6 +14,10 @@ class API
     private static $systemErrors = array(304);
 
 
+    public function __construct () {
+        Core::init(array("start_sessions" => false));
+    }
+
     public static function getVersion() {
         return self::$version;
     }
@@ -61,10 +65,11 @@ class API
      *                   [1] the HTML content
      *        if "return_as_string" not set, it just prints the HTML to the page (the default behaviour)
      */
-    public static function showSubmissions($form_id, $view_id, $export_type_id, $page_num = 1, $options = array())
+    public function showSubmissions($form_id, $view_id, $export_type_id, $page_num = 1, $options = array())
     {
         $db = Core::$db;
-        $smarty = Core::$smarty;
+        $root_dir = Core::getRootDir();
+        $smarty = Templates::getPageRenderSmarty("default");
 
         if (!Modules::checkModuleEnabled("export_manager")) {
             return self::processError(400);
@@ -103,6 +108,8 @@ class API
 
         // okay, now lets figure out what needs to be displayed & rendered
         $export_manager = Modules::instantiateModule("export_manager");
+        $smarty->addPluginsDir(array("$root_dir/modules/export_manager/smarty_plugins"));
+
         $form_info = Forms::getForm($form_id);
         $form_fields = Fields::getFormFields($form_id, array("include_field_type_info" => true, "include_field_settings" => true));
         $view_info = Views::getView($view_id);
@@ -247,13 +254,13 @@ class API
      * @param integer $view_id
      * @param integer $submission_id
      */
-    public static function showSubmission($form_id, $view_id, $export_type_id, $submission_id)
+    public function showSubmission($form_id, $view_id, $export_type_id, $submission_id)
     {
         $options = array(
             "submission_ids" => $submission_id,
             "num_per_page" => "all" // prevents the pagination from appearing
         );
-        self::showSubmissions($form_id, $view_id, $export_type_id, "", $options);
+        $this->showSubmissions($form_id, $view_id, $export_type_id, "", $options);
     }
 
 
@@ -263,9 +270,9 @@ class API
      * @param integer $form_id
      * @param integer $view_id
      */
-    public static function showSubmissionCount($form_id, $view_id = "")
+    public function showSubmissionCount($form_id, $view_id = "")
     {
-        return self::submissionCount($form_id, $view_id);
+        return Submissions::getSubmissionCount($form_id, $view_id);
     }
 
 
@@ -280,7 +287,7 @@ class API
      *   redirects to an error page or returns the error info. This depends on your $g_api_debug setting in your
      *   config.php file.
      */
-    public static function createBlankSubmission($form_id, $finalized = false, $values = array())
+    public function createBlankSubmission($form_id, $finalized = false, $values = array())
     {
         $db = Core::$db;
 
@@ -792,7 +799,7 @@ class API
      * @param string $session_name
      * @param string $default_value
      */
-    public static function loadField($field_name, $session_name, $default_value)
+    public function loadField($field_name, $session_name, $default_value)
     {
         return General::loadField($field_name, $session_name, $default_value);
     }
@@ -884,6 +891,8 @@ class API
     /**
      * Creates a client account in the database.
      *
+     * TODO this shouldn't duplicate the Core functionality - two places to maintain!
+     *
      * @param array $account_info this has has 4 required keys: first_name, last_name, user_name, password
      *
      * The password is automatically encrypted by this function.
@@ -902,7 +911,7 @@ class API
      * @return array [0] true / false
      *               [1] an array of error codes (if false) or the new account ID
      */
-    public static function createClientAccount($account_info)
+    public function createClientAccount($account_info)
     {
         $db = Core::$db;
         $api_debug = Core::isAPIDebugEnabled();

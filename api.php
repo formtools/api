@@ -19,20 +19,27 @@ require_once("API.class.php");
 use FormTools\API;
 use FormTools\Core;
 
-$g_api_version = API::getVersion(); // TODO
+//$g_api_version = API::getVersion(); // TODO
 //$g_api_recaptcha_error = null; // TODO
 
 // wrapper functions for the new API class methods
+function ft_api_get() {
+    return new API();
+}
+
 function ft_api_show_submissions($form_id, $view_id, $export_type_id, $page_num = 1, $options = array()) {
-    return API::showSubmissions($form_id, $view_id, $export_type_id, $page_num, $options);
+    $api = ft_api_get();
+    return $api->showSubmissions($form_id, $view_id, $export_type_id, $page_num, $options);
 }
 
 function ft_api_show_submission($form_id, $view_id, $export_type_id, $submission_id) {
-    return API::showSubmission($form_id, $view_id, $export_type_id, $submission_id);
+    $api = ft_api_get();
+    $api->showSubmission($form_id, $view_id, $export_type_id, $submission_id);
 }
 
 function ft_api_show_submission_count($form_id, $view_id = "") {
-    return API::showSubmissionCount($form_id, $view_id);
+    $API = ft_api_get();
+    return $API->showSubmissionCount($form_id, $view_id);
 }
 
 function ft_api_create_blank_submission($form_id, $finalized = false, $default_values = array()) {
@@ -56,7 +63,8 @@ function ft_api_display_image_field($params) {
 }
 
 function ft_api_load_field($field_name, $session_name, $default_value) {
-    return API::loadField($field_name, $session_name, $default_value);
+    $api = ft_api_get();
+    return $api->loadField($field_name, $session_name, $default_value);
 }
 
 function ft_api_login($info) {
@@ -64,7 +72,8 @@ function ft_api_login($info) {
 }
 
 function ft_api_create_client_account($account_info) {
-    return API::createClientAccount($account_info);
+    $api = ft_api_get();
+    return $api->createClientAccount($account_info);
 }
 
 function ft_api_update_client_account($account_id, $info) {
@@ -88,7 +97,7 @@ function ft_api_check_submission_is_unique($form_id, $criteria, $current_submiss
 }
 
 function ft_api_start_sessions() {
-    return Core::startSessions();
+    Core::startSessions();
 }
 
 function ft_api_display_post_form_captcha_error($message = "") {
@@ -96,5 +105,6 @@ function ft_api_display_post_form_captcha_error($message = "") {
 }
 
 function ft_api_get_submission($form_id, $submission_id) {
-    return API::getSubmission($form_id, $submission_id);
+    $api = ft_api_get();
+    return $api->getSubmission($form_id, $submission_id);
 }

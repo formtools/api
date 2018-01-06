@@ -9,5 +9,5 @@ $path_to_api_v2 = "../../../core/global/api/API.class.php";
 
 // exit immediately if the examples aren't enabled
 if (!$examples_enabled) {
-	exit;
+    exit;
 }

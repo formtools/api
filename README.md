@@ -1,4 +1,4 @@
-## Form Tools API
+# Form Tools API
 
 This repo contains the Form Tools API, providing some convenience methods to extend Form Tools in various ways:
 - Let's you create complex, multi-page forms that integrate well with Form Tools. 
