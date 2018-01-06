@@ -43,5 +43,5 @@ to the api.php/API.class.php file.
 
 ## Getting help
 
-Check out the (Form Tools forums)[https://forums.formtools.org].  If you think you've found a bug - please report it here 
+Check out the [Form Tools forums](https://forums.formtools.org).  If you think you've found a bug - please report it here 
 on the github repo. Thanks!

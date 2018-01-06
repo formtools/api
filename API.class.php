@@ -891,29 +891,26 @@ class API
     /**
      * Creates a client account in the database.
      *
-     * TODO this shouldn't duplicate the Core functionality - two places to maintain!
-     *
      * @param array $account_info this has has 4 required keys: first_name, last_name, user_name, password
      *
      * The password is automatically encrypted by this function.
      *
      * It also accepts the following optional keys:
-     *   account_status: "active", "disabled", "pending"
-     *   ui_language: (should only be one of the languages currently supported by the script, e.g. "en_us")
-     *   timezone_offset: +- an integer value, for each hour
-     *   sessions_timeout:
-     *   date_format:
-     *   login_page:
-     *   logout_url:
-     *   theme:
-     *   menu_id:
+     *     account_status: "active", "disabled", "pending"
+     *     ui_language: (should only be one of the languages currently supported by the script, e.g. "en_us")
+     *     timezone_offset: +- an integer value, for each hour
+     *     sessions_timeout:
+     *     date_format:
+     *     login_page:
+     *     logout_url:
+     *     theme:
+     *     menu_id:
      *
      * @return array [0] true / false
      *               [1] an array of error codes (if false) or the new account ID
      */
     public function createClientAccount($account_info)
     {
-        $db = Core::$db;
         $api_debug = Core::isAPIDebugEnabled();
 
         $error_codes = array();
@@ -961,70 +958,16 @@ class API
             }
         }
 
-        $settings = Settings::get();
-        $account_status = (isset($account_info["account_status"])) ? $account_info["account_status"] : "pending";
-        $language = (isset($account_info["ui_language"])) ? $account_info["ui_language"] : $settings["default_language"];
-        $timezone_offset = (isset($account_info["timezone_offset"])) ? $account_info["timezone_offset"] : $settings["default_timezone_offset"];
-        $sessions_timeout = (isset($account_info["sessions_timeout"])) ? $account_info["sessions_timeout"] : $settings["default_sessions_timeout"];
-        $date_format = (isset($account_info["date_format"])) ? $account_info["date_format"] : $settings["default_date_format"];
-        $login_page = (isset($account_info["login_page"])) ? $account_info["login_page"] : $settings["default_login_page"];
-        $logout_url = (isset($account_info["logout_url"])) ? $account_info["logout_url"] : $settings["default_logout_url"];
-        $theme = (isset($account_info["theme"])) ? $account_info["theme"] : $settings["default_theme"];
-        $menu_id = (isset($account_info["menu_id"])) ? $account_info["menu_id"] : $settings["default_client_menu_id"];
+        // to pass validation
+        $account_info["password_2"] = $account_info["password"];
 
-        try {
-            // first, insert the record into the accounts table. This contains all the settings common to ALL
-            // accounts (including the administrator and any other future account types)
-            $db->query("
-                INSERT INTO {PREFIX}accounts (account_type, account_status, ui_language, timezone_offset, sessions_timeout,
-                    date_format, login_page, logout_url, theme, menu_id, first_name, last_name, email, username, password)
-                VALUES (:account_type, :account_status, :ui_language, :timezone_offset, :sessions_timeout,
-                    :date_format, :login_page, :logout_url, :theme, :menu_id, :first_name, :last_name, :email,
-                    :username, :password)
-            ");
-            $db->bindAll(array(
-                "account_type" => "client",
-                "account_status" => $account_status,
-                "ui_language" => $language,
-                "timezone_offset" => $timezone_offset,
-                "sessions_timeout" => $sessions_timeout,
-                "date_format" => $date_format,
-                "login_page" => $login_page,
-                "logout_url" => $logout_url,
-                "theme" => $theme,
-                "menu_id" => $menu_id,
-                "first_name" => $account_info["first_name"],
-                "last_name" => $account_info["last_name"],
-                "email" => $account_info["email"],
-                "username" => $account_info["username"],
-                "password" => General::encode($account_info["password"])
-            ));
-            $db->execute();
-        } catch (Exception $e) {
+        list ($success, $message, $new_user_id) = Administrator::addClient($account_info);
+
+        if (!$success) {
             return self::processError(709, array(
-                "debugging" => "Failed query in <b>" . __FUNCTION__ . "</b>: " . $e->getMessage()
+                "debugging" => "Failed query in <b>" . __FUNCTION__ . "</b>: " . $message
             ));
         }
-
-        $new_user_id = $db->getInsertId();
-
-        // now create all the custom client account settings, most of which are based on the default values
-        // in the settings table
-        $account_settings = array(
-            "client_notes" => "",
-            "company_name" => "",
-            "page_titles" => $settings["default_page_titles"],
-            "footer_text" => $settings["default_footer_text"],
-            "may_edit_page_titles" => $settings["clients_may_edit_page_titles"],
-            "may_edit_footer_text" => $settings["clients_may_edit_footer_text"],
-            "may_edit_theme" => $settings["clients_may_edit_theme"],
-            "may_edit_logout_url" => $settings["clients_may_edit_logout_url"],
-            "may_edit_language" => $settings["clients_may_edit_ui_language"],
-            "may_edit_timezone_offset" => $settings["clients_may_edit_timezone_offset"],
-            "may_edit_sessions_timeout" => $settings["clients_may_edit_sessions_timeout"],
-            "may_edit_date_format" => $settings["clients_may_edit_date_format"]
-        );
-        Accounts::setAccountSettings($new_user_id, $account_settings);
 
         return array(true, $new_user_id);
     }
@@ -1038,10 +981,10 @@ class API
      */
     public static function updateClientAccount($account_id, $info)
     {
+        $db = Core::$db;
+
         // check the account ID is valid
-        $account_id = ft_sanitize($account_id);
-        $info = ft_sanitize($info);
-        $account_info = ft_get_account_info($account_id);
+        $account_info = Accounts::getAccountInfo($account_id);
 
         // check the account ID was valid (i.e. the account exists) and that it's a CLIENT account
         if (!isset($account_info["account_id"])) {
@@ -1051,7 +994,7 @@ class API
             return self::processError(901);
         }
 
-        // get a list of the possible DB columns that can be updated
+        // the list of DB columns that can be updated
         $valid_columns = array(
             "account_status",
             "ui_language",
@@ -1069,43 +1012,43 @@ class API
             "password"
         );
 
-        $mysql_update_rows = array();
+        $columns_to_update = array();
         while (list($key, $value) = each($info)) {
             // if something passed by the user isn't a valid column name, ignore it
             if (!in_array($key, $valid_columns)) {
                 continue;
             }
 
-            // if this is the password field, encrypt it!
+            // if this is the password field, encrypt it
             if ($key == "password") {
                 $value = General::encode($value);
             }
 
-            $mysql_update_rows[] = "$key = '$value'";
+            $columns_to_update[$key] = $value;
         }
 
-        if (empty($mysql_update_rows)) {
+        if (empty($columns_to_update)) {
             return array(true, "");
         }
 
-        $update_lines = "SET " . join(",\n", $mysql_update_rows);
+        $update_lines = $db->getUpdateStatements($columns_to_update);
 
-        $query = "
-            UPDATE {PREFIX}accounts
-            $update_lines
-            WHERE account_id = $account_id
-        ";
-
-        $result = mysql_query($query);
-
-        if ($result) {
-            return array(true, "");
-        } else {
+        try {
+            $db->query("
+                UPDATE {PREFIX}accounts
+                SET $update_lines
+                WHERE account_id = :account_id
+            ");
+            $db->bindAll($columns_to_update);
+            $db->bind("account_id", $account_id);
+            $db->execute();
+        } catch (Exception $e) {
             return self::processError(902, array(
-                "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ .
-                    ": " . $e->getMessage()
+                "Failed query in <b>" . __FUNCTION__ . ", " . __FILE__ . "</b>, line " . __LINE__ . ": " . $e->getMessage()
             ));
         }
+
+        return array(true, "");
     }
 
 
@@ -1125,7 +1068,7 @@ class API
      *                   [0] false
      *                   [1] the API error code
      */
-    public static function deleteClientAccount($account_id)
+    public function deleteClientAccount($account_id)
     {
         $account_info = Accounts::getAccountInfo($account_id);
 

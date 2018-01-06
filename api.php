@@ -77,11 +77,13 @@ function ft_api_create_client_account($account_info) {
 }
 
 function ft_api_update_client_account($account_id, $info) {
-    return API::updateClientAccount($account_id, $info);
+    $api = ft_api_get();
+    return $api->updateClientAccount($account_id, $info);
 }
 
 function ft_api_delete_client_account($account_id) {
-    return API::deleteClientAccount($account_id);
+    $api = ft_api_get();
+    return $api->deleteClientAccount($account_id);
 }
 
 function ft_api_delete_unfinalized_submissions($form_id, $delete_all = false) {
