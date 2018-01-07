@@ -9,7 +9,7 @@ require_once($path_to_api_v1);
 
 <h4>Documentation</h4>
 
-See: <a href="https://docs.formtools.org/api/ft_api_create_client_account/" target="_blank">https://docs.formtools.org/api/ft_api_create_client_accountn/</a>
+See: <a href="https://docs.formtools.org/api/ft_api_create_client_account/" target="_blank">https://docs.formtools.org/api/ft_api_create_client_account/</a>
 
 <hr size="1" />
 

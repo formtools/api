@@ -2,7 +2,6 @@
 
 namespace FormTools;
 
-// include the Form Tools core
 require_once(realpath(__DIR__ . "/../library.php"));
 
 use PDO, Exception;
@@ -13,9 +12,10 @@ class API
     private static $version = "2.0.0";
     private static $systemErrors = array(304);
 
-
-    public function __construct () {
-        Core::init(array("start_sessions" => false));
+    public function __construct ($settings = array()) {
+        Core::init(array(
+            "start_sessions" => isset($settings["start_sessions"]) ? $settings["start_sessions"] : false
+        ));
     }
 
     public static function getVersion() {
@@ -85,7 +85,8 @@ class API
         }
 
         $db->query("
-            SELECT count(*) FROM {PREFIX}views
+            SELECT count(*)
+            FROM {PREFIX}views
             WHERE form_id = :form_id AND
                   view_id = :view_id
         ");
@@ -820,10 +821,8 @@ class API
      *     "login_url" - the URL to redirect to (if desired). If this isn't set, but auto_redirect_after_login IS,
      *         it will log the user in normally, to whatever login page they've specified in their account.
      */
-    public static function login($info)
+    public function login($info)
     {
-        $root_url = Core::getRootUrl();
-
         $password = isset($info["password"]) ? $info["password"] : "";
 
         if (empty($password)) {
@@ -844,47 +843,11 @@ class API
             return self::processError(1002);
         }
 
-        if (md5(md5($password)) != $account_info["password"]) {
+        if (General::encode($password) != $account_info["password"]) {
             return self::processError(1003);
         }
 
-
-        // all checks out. Log them in, after populating sessions
-        $_SESSION["ft"]["settings"] = Settings::get("", "core"); // only load the core settings
-        $_SESSION["ft"]["account"] = Accounts::getAccountInfo($account_info["account_id"]);
-        $_SESSION["ft"]["account"]["is_logged_in"] = true;
-        $_SESSION["ft"]["account"]["password"] = General::encode($password);
-
-        Menus::cacheAccountMenu($account_info["account_id"]);
-
-        // if this is an administrator, build and cache the upgrade link and ensure the API version is up to date
-        if ($account_info["account_type"] == "admin") {
-            General::updateApiVersion();
-            ft_build_and_cache_upgrade_info();
-        }
-
-        // for clients, store the forms & form Views that they are allowed to access
-        if ($account_info["account_type"] == "client") {
-            $_SESSION["ft"]["permissions"] = Clients::getClientFormViews($account_info["account_id"]);
-        }
-
-        // redirect the user to whatever login page they specified in their settings
-        if (isset($info["auto_redirect_after_login"]) && $info["auto_redirect_after_login"]) {
-            if (isset($info["login_url"]) && !empty($info["login_url"])) {
-                session_write_close();
-                header("Location: $login_url");
-                exit;
-            } else {
-                $login_url = Pages::constructPageURL($account_info["login_page"]);
-                $login_url = "$root_url{$login_url}";
-
-                session_write_close();
-                header("Location: $login_url");
-                exit;
-            }
-        }
-
-        return array(true, "");
+        return Core::$user->login($info);
     }
 
 

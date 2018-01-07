@@ -68,7 +68,8 @@ function ft_api_load_field($field_name, $session_name, $default_value) {
 }
 
 function ft_api_login($info) {
-    API::login($info);
+    $api = new API(array("start_settings" => true));
+    return $api->login($info);
 }
 
 function ft_api_create_client_account($account_info) {
