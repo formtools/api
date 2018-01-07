@@ -288,7 +288,7 @@ class API
      *   redirects to an error page or returns the error info. This depends on your $g_api_debug setting in your
      *   config.php file.
      */
-    public function createBlankSubmission($form_id, $finalized = false, $values = array())
+    public function createSubmission($form_id, $finalized = false, $values = array())
     {
         $db = Core::$db;
 
@@ -302,7 +302,7 @@ class API
         $values["ip_address"] = $_SERVER["REMOTE_ADDR"];
         $values["submission_date"] = $now;
         $values["last_modified_date"] = $now;
-        list($cols_str, $placeholders_str) = $db->getInsertStatementParams($values);
+        list ($cols_str, $placeholders_str) = $db->getInsertStatementParams($values);
 
         try {
             $db->query("
@@ -397,7 +397,7 @@ class API
      *
      * @param string $namespace (optional);
      */
-    public static function clearFormSessions($namespace = "form_tools_form")
+    public function clearFormSessions($namespace = "form_tools_form")
     {
         $_SESSION[$namespace] = "";
         unset($_SESSION[$namespace]);
@@ -441,7 +441,7 @@ class API
      *               [0] success / false
      *               [1] if failure, the API Error Code, otherwise blank
      */
-    public static function processForm($params)
+    public function processForm($params)
     {
         $multi_val_delimiter = Core::getMultiFieldValDelimiter();
         $LANG = Core::$L;
@@ -761,7 +761,7 @@ class API
      *          button will be removed (handy for "Review" pages).
      *     "delete_button_label" - by default, "Delete file"
      */
-    public static function displayImageField($params)
+    public function displayImageField($params)
     {
         if (empty($params["field_name"])) {
             return;
@@ -942,7 +942,7 @@ class API
      * @param integer $account_id
      * @param array $info an array of keys to update, corresponding to the columns in the accounts table.
      */
-    public static function updateClientAccount($account_id, $info)
+    public function updateClientAccount($account_id, $info)
     {
         $db = Core::$db;
 
@@ -1058,7 +1058,7 @@ class API
      *
      * @return mixed the number of unfinalized submissions that were just deleted, or error.
      */
-    public static function deleteUnfinalizedSubmissions($form_id, $delete_all = false)
+    public function deleteUnfinalizedSubmissions($form_id, $delete_all = false)
     {
         $db = Core::$db;
 
@@ -1125,7 +1125,7 @@ class API
      *                   [0] false
      *                   [1] the API error code
      */
-    public static function displayCaptcha()
+    public function displayCaptcha()
     {
         $recaptcha_public_key = Core::getApiRecaptchaPublicKey();
         $recaptcha_private_key = Core::getAPIRecaptchaPrivateKey();
@@ -1135,11 +1135,11 @@ class API
         require_once("./recaptchalib.php");
 
         // check the two recaptcha keys have been defined
-        if (empty($g_api_recaptcha_public_key) || empty($g_api_recaptcha_private_key)) {
+        if (empty($recaptcha_public_key) || empty($recaptcha_private_key)) {
             return self::processError(600);
         }
 
-        echo recaptcha_get_html($g_api_recaptcha_public_key, $g_api_recaptcha_error);
+        echo recaptcha_get_html($api_recaptcha_public_key, $g_api_recaptcha_error);
     }
 
 
@@ -1155,7 +1155,7 @@ class API
      * @param integer $current_submission_id if this value is set, the function ignores that submission when doing
      *   a comparison.
      */
-    public static function checkSubmissionIsUnique($form_id, $criteria, $current_submission_id = "")
+    public function checkSubmissionIsUnique($form_id, $criteria, $current_submission_id = "")
     {
         $db = Core::$db;
 
@@ -1212,7 +1212,7 @@ class API
      *
      * @param string $message the message to output if there was a problem with the CAPTCHA contents.
      */
-    public static function displayPostFormCaptchaError($message = "")
+    public function displayPostFormCaptchaError($message = "")
     {
         if (!isset($_SESSION["form_tools_form_data"])) {
             return;
@@ -1238,7 +1238,7 @@ class API
      * @param integer $form_id
      * @param integer $submission_id
      */
-    public static function getSubmission($form_id, $submission_id)
+    public function getSubmission($form_id, $submission_id)
     {
         $db = Core::$db;
 

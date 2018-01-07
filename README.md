@@ -21,8 +21,12 @@ changed has the way you call the API methods_.
 
 ## Examples
 
-The documentation contains examples for all the methods, but for something more hands-on, check out the `examples/` folder
-in this repo. That contains some simple, bare-bones examples (no CSS!) to illustrate how to use each API function.
+The documentation links above contains in-page example code for all the methods, but for something more hands-on
+check out the `examples/` folder in this repo. That contains some simple, bare-bones examples (no CSS!) of some of the
+API methods that can easily be shown. Other methods such as the form integration methods need additional work to
+configure Form Tools - so couldn't be included. See the [tutorials](https://docs.formtools.org/tutorials/) for further 
+info on them.
+
 The`v1/` folder contains the old Form Tools 2.x compatible API methods (version 1.x of the API); the `v2/`
 folder contains Form Tools 3 compatible API methods (version 2.x of the API). For Form Tools 3 users, please use
 the `v2/` folder examples - `v1/` is just provided for people upgrading to Form Tools 3 and want to keep
@@ -43,5 +47,5 @@ to the api.php/API.class.php file.
 
 ## Getting help
 
-Check out the [Form Tools forums](https://forums.formtools.org).  If you think you've found a bug - please report it here 
+Check out the [Form Tools forums](https://forums.formtools.org.  If you think you've found a bug - please report it here 
 on the github repo. Thanks!
