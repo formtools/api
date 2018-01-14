@@ -10,6 +10,7 @@ use PDO, Exception;
 class API
 {
     private static $version = "2.0.0";
+    private static $releaseDate = "20180113";
     private static $systemErrors = array(304);
 
     /**
@@ -31,6 +32,10 @@ class API
 
     public static function getVersion() {
         return self::$version;
+    }
+
+    public static function getReleaseDate() {
+        return self::$releaseDate;
     }
 
     /**
@@ -477,14 +482,29 @@ class API
             if (preg_match("/form_tools_delete_image_field__(.*)$/", $key, $matches)) {
                 $file_field_to_delete = $matches[1];
                 $is_deleting_file = true;
+                $field_col = Fields::getFieldColByFieldName($form_id, $file_field_to_delete);
 
-                $field_id = Fields::getFormFieldIdByFieldName($file_field_to_delete, $form_id);
+                try {
+                    $db->query("
+                        UPDATE {PREFIX}form_{$form_id}
+                        SET $field_col = :val
+                        WHERE submission_id = :submission_id
+                    ");
+                    $db->bindAll(array(
+                        "val" => "",
+                        "submission_id" => $submission_id
+                    ));
+                    $db->execute();
 
-                // TOD.O ... field_type_file...
-                //deleteFileSubmission($form_id, $submission_id, $field_id, true);
+                    $path = $_SESSION[$namespace][$file_field_to_delete]["file_upload_dir"];
+                    $filename = $_SESSION[$namespace][$file_field_to_delete]["filename"];
+                    @unlink("$path/$filename");
 
-                unset($_SESSION[$namespace][$file_field_to_delete]);
-                unset($params["form_data"][$key]);
+                    unset($_SESSION[$namespace][$file_field_to_delete]);
+                    unset($params["form_data"][$key]);
+                } catch (Exception $e) {
+
+                }
             }
         }
 
