@@ -12,10 +12,21 @@ class API
     private static $version = "2.0.0";
     private static $systemErrors = array(304);
 
+    /**
+     * API constructor. Single param with the following:
+     *      "init_core" => true (default). This prevents the constructor doing anything.
+     *      "start_sessions" => false (default)
+     * @param array $settings
+     */
     public function __construct ($settings = array()) {
-        Core::init(array(
-            "start_sessions" => isset($settings["start_sessions"]) ? $settings["start_sessions"] : false
-        ));
+        $init_core = isset($settings["init_core"]) ? $settings["init_core"] : true;
+        $start_sessions = isset($settings["start_sessions"]) ? $settings["start_sessions"] : true;
+
+        if ($init_core) {
+            Core::init(array(
+                "start_sessions" => $start_sessions
+            ));
+        }
     }
 
     public static function getVersion() {
@@ -377,7 +388,7 @@ class API
                         return $_SESSION[$namespace];
                     }
 
-                    $submission_id = self::createBlankSubmission($form_id);
+                    $submission_id = self::createSubmission($form_id);
                     $_SESSION[$namespace]["form_tools_form_id"] = $form_id;
                     $_SESSION[$namespace]["form_tools_submission_id"] = $submission_id;
                     break;
@@ -409,7 +420,7 @@ class API
      * "submit_button_name key exists in $params (i.e. if the user just submitted the form), it updates the database for
      * the submission ID.
      *
-     * Assumption: the ft_api_init_form_page function has been called on the page prior to calling this function.
+     * Assumption: the initFormPage() function has been called on the page prior to calling this function.
      *
      * @param array $params
      *
@@ -435,20 +446,18 @@ class API
      *               "on submission" event ONLY when the submission is finalized (finalize=true). This setting provides
      *               you with direct control over when the emails get sent. If not specified, will use the default
      *               behaviour.
+     *        "has_captcha": (boolean). This needs to be set to true if the POST contains a captcha.
      *
      * @return mixed ordinarily, this function will just redirect the user to whatever URL is specified in the
      *        "next_page" key. But if that value isn't set, it returns an array:
      *               [0] success / false
      *               [1] if failure, the API Error Code, otherwise blank
      */
-    public function processForm($params)
+    public function processFormSubmission($params)
     {
         $multi_val_delimiter = Core::getMultiFieldValDelimiter();
         $LANG = Core::$L;
         $db = Core::$db;
-        $recaptcha_private_key = Core::getAPIRecaptchaPrivateKey();
-
-        // $g_api_recaptcha_error; ???
 
         // the form data parameter must ALWAYS be defined
         if (!isset($params["form_data"])) {
@@ -488,7 +497,7 @@ class API
         $form_data = $params["form_data"];
         $form_id = isset($_SESSION[$namespace]["form_tools_form_id"]) ? $_SESSION[$namespace]["form_tools_form_id"] : "";
         $submission_id = isset($_SESSION[$namespace]["form_tools_submission_id"]) ? $_SESSION[$namespace]["form_tools_submission_id"] : "";
-        $has_captcha = isset($form_data["recaptcha_response_field"]) ? true : false;
+        $has_captcha = isset($params["has_captcha"]) ? $params["has_captcha"] : false;
         $no_sessions_url = isset($params["no_sessions_url"]) ? $params["no_sessions_url"] : false;
 
         if (!isset($_GET["ft_sessions_url_override"]) && (empty($form_id) || empty($submission_id))) {
@@ -613,7 +622,7 @@ class API
                             }
                         }
 
-                        $valid_form_fields[$curr_form_field["col_name"]] = "'$cleaned_value'";
+                        $valid_form_fields[$curr_form_field["col_name"]] = $cleaned_value;
                     }
                 }
 
@@ -624,8 +633,8 @@ class API
                 $valid_form_fields["ip_address"] = $_SERVER["REMOTE_ADDR"];
                 $set_statements = $db->getUpdateStatements($valid_form_fields);
 
-                // in this section, we update the database submission info & upload files. Note: we don't do ANYTHING
-                // if the form_tools_ignore_submission key is set in the POST data
+                // update the database submission info & upload files. Note: we don't do ANYTHING if the
+                // form_tools_ignore_submission key is set in the POST data
                 if (!isset($form_data["form_tools_ignore_submission"])) {
 
                     // construct our query. Note that we do TWO queries: one if there was no CAPTCHA sent with this
@@ -651,7 +660,7 @@ class API
                             UPDATE {PREFIX}form_$form_id
                             SET    $set_statements
                                    $is_finalized_clause
-                            WHERE  submission_id = $submission_id
+                            WHERE  submission_id = :submission_id
                         ");
                         $db->bindAll($valid_form_fields);
                         $db->bind("submission_id", $submission_id);
@@ -687,16 +696,9 @@ class API
         $passes_captcha = true;
         if ($has_captcha) {
             $passes_captcha = false;
-            $recaptcha_challenge_field = $form_data["recaptcha_challenge_field"];
-            $recaptcha_response_field = $form_data["recaptcha_response_field"];
+            $resp = $this->validateRecaptcha($params["form_data"]["g-recaptcha-response"]);
 
-            $folder = dirname(__FILE__);
-            require_once("$folder/recaptchalib.php");
-
-            $resp = recaptcha_check_answer($recaptcha_private_key, $_SERVER["REMOTE_ADDR"],
-            $recaptcha_challenge_field, $recaptcha_response_field);
-
-            if ($resp->is_valid) {
+            if ($resp->isSuccess()) {
                 $passes_captcha = true;
 
                 // if the developer wanted the submission to be finalized at this step, do so - it wasn't earlier!
@@ -710,9 +712,9 @@ class API
                     $db->execute();
                 }
             } else {
-                // register the recaptcha as a global, which can be picked up silently by ft_api_display_captcha to
+                // register the recaptcha response as a global, which can be picked up silently by ft_api_display_captcha to
                 // let them know they entered it wrong
-                $g_api_recaptcha_error = $resp->error;
+                $GLOBALS["g_api_recaptcha_error"] = $resp->getErrorCodes();
             }
         }
 
@@ -754,8 +756,7 @@ class API
      *   Optional keys
      *     "width"  - adds a "width" attribute to the image, with this value
      *     "height" - adds a "width" attribute to the image, with this value
-     *     "namespace"  - only required if you specified a custom namespace in the original ft_api_init_form_page
-     *          function.
+     *     "namespace"  - only required if you specified a custom namespace in the original initFormPage method.
      *     "hide_delete_button" - by default, whenever the field already has an image uploaded, this function will
      *          display the image as well as a "Delete" button. If this value is passed & set to true, the delete
      *          button will be removed (handy for "Review" pages).
@@ -1083,14 +1084,15 @@ class API
 
         // find out which of this form are file fields
         $form_fields = Fields::getFormFields($form_id);
+        $file_type_id = FieldTypes::getFieldTypeIdByIdentifier("file");
 
         $file_field_info = array(); // a hash of col_name => file upload dir
         foreach ($form_fields as $field_info) {
-            if ($field_info["field_type"] == "file") {
+            if ($field_info["field_type_id"] == $file_type_id) {
                 $field_id = $field_info["field_id"];
                 $col_name = $field_info["col_name"];
-                $extended_settings = Fields::getExtendedFieldSettings($field_id);
-                $file_field_info[$col_name] = $extended_settings["file_upload_dir"];
+                $field_settings = Fields::getFieldSettings($field_id);
+                $file_field_info[$col_name] = $field_settings["folder_path"];
             }
         }
 
@@ -1125,21 +1127,32 @@ class API
      *                   [0] false
      *                   [1] the API error code
      */
-    public function displayCaptcha()
+    public function displayCaptcha($show_error = true)
     {
-        $recaptcha_public_key = Core::getApiRecaptchaPublicKey();
-        $recaptcha_private_key = Core::getAPIRecaptchaPrivateKey();
-
-        //$g_api_recaptcha_error;
-
-        require_once("./recaptchalib.php");
+        $recaptcha_site_key = Core::getApiRecaptchaSiteKey();
+        $recaptcha_secret_key = Core::getApiRecaptchaSecretKey();
+        $recaptcha_lang = Core::getApiRecaptchaLang();
 
         // check the two recaptcha keys have been defined
-        if (empty($recaptcha_public_key) || empty($recaptcha_private_key)) {
-            return self::processError(600);
+        if (empty($recaptcha_site_key) || empty($recaptcha_secret_key)) {
+            self::displayInPageErrorBlock(600);
+            exit;
         }
 
-        echo recaptcha_get_html($api_recaptcha_public_key, $g_api_recaptcha_error);
+        $this->includeRecaptchaLib();
+
+        if (isset($GLOBALS["g_api_recaptcha_error"]) && $show_error) {
+            echo <<< END
+            <div class="form_tools_recaptcha_error">
+                There was a reCAPTCHA error.
+            </div>
+END;
+        }
+
+echo <<< END
+<div class="g-recaptcha" data-sitekey="{$recaptcha_site_key}"></div>
+<script type="text/javascript" src="https://www.google.com/recaptcha/api.js?hl={$recaptcha_lang}"></script>
+END;
     }
 
 
@@ -1185,11 +1198,10 @@ class API
 
         if (!empty($current_submission_id)) {
             $where_clauses[] = "submission_id != :submission_id";
-            $where_clauses["submission_id"] = $current_submission_id;
+            $placeholders["submission_id"] = $current_submission_id;
         }
 
         $where_clause_str = "WHERE " . join(" AND ", $where_clauses);
-
         try {
             $db->query("
                 SELECT count(*)
@@ -1202,7 +1214,7 @@ class API
             return self::processError(554);
         }
 
-        return $db->numRows();
+        return $db->fetch(PDO::FETCH_COLUMN) === 0;
     }
 
 
@@ -1264,6 +1276,22 @@ class API
     }
 
 
+    public function includeRecaptchaLib()
+    {
+        require_once(__DIR__ . "/recaptcha/autoload.php");
+    }
+
+
+    public function validateRecaptcha($g_recaptcha_response)
+    {
+        $secret_key = Core::getAPIRecaptchaSecretKey();
+        $this->includeRecaptchaLib();
+
+        $recaptcha = new \ReCaptcha\ReCaptcha($secret_key);
+        return $recaptcha->verify($g_recaptcha_response, $_SERVER['REMOTE_ADDR']);
+    }
+
+
     /**
      * Called for all API errors. If `$g_api_debug = true;` is set in the users' config.php file, this method
      * redirects the user to a webpage containing details about the error, plus a link
@@ -1271,22 +1299,40 @@ class API
      * @param array $extra_info
      * @return array
      */
-    private static function processError($error_code, $extra_info = array()) {
+    private static function processError($error_code, $extra_info = array())
+    {
         $api_debug = Core::isAPIDebugEnabled();
 
         if ($api_debug) {
-            $is_system_error = in_array($error_code, self::$systemErrors);
-
-            $content = array_merge(array(
-                "error_code" => $error_code,
-                "message_type" => "error",
-                "error_type" => $is_system_error ? "system" : "user"
-            ), $extra_info);
-
-            Themes::displayPage("error.tpl", $content);
+            self::displayError($error_code, $extra_info);
             exit;
         } else {
             return array(false, $error_code);
         }
+    }
+
+    private static function displayError($error_code, $extra_info = array())
+    {
+        $is_system_error = in_array($error_code, self::$systemErrors);
+
+        $content = array_merge(array(
+            "error_code" => $error_code,
+            "message_type" => "error",
+            "error_type" => $is_system_error ? "system" : "user"
+        ), $extra_info);
+
+        Themes::displayPage("error.tpl", $content);
+    }
+
+
+    private static function displayInPageErrorBlock($error_code)
+    {
+        $LANG = Core::$L;
+
+        echo <<< END
+<div style="padding: 8px; margin: 8px; background-color: #f2dede; border: 1px solid #ebccd1; border-radius: 4px; color: #a94442; display: inline-block; font-family: arial; font-size: 13px; ">
+    <b>Form Tools API Error:</b> $error_code - <a href="https://docs.formtools.org/api/v2/error_codes/#{$error_code}">{$LANG["phrase_error_learn_more"]}</a>
+</div>
+END;
     }
 }

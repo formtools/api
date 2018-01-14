@@ -57,7 +57,7 @@ function ft_api_clear_form_sessions($namespace = "form_tools_form") {
 
 function ft_api_process_form($params) {
     $api = ft_api_get();
-    return $api->processForm($params);
+    return $api->processFormSubmission($params);
 }
 
 function ft_api_display_image_field($params) {
