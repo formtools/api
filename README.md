@@ -37,7 +37,7 @@ compatibility with their existing API forms and usage.
 - Create a form in Form Tools - it doesn't matter if it's an internal, external or Form Builder form. Many of
 the Form Tools API methods rely on passing form IDs, view IDs and more. As such you may find you will need
 to edit these examples to pass the IDs/settings that are correct for your installation and forms.
-- The Form Tools download packages from (formtools.org)[https://formtools.org/download/] all include the API as 
+- The Form Tools download packages from [formtools.org/download/](https://formtools.org/download/) all include the API as 
 part of the bundle, but if you're getting the code from the source github repos, be sure to upload the contents of 
 the latest [API package version](https://github.com/formtools/api/releases) to your `[Form Tools root]/global/api/ folder`. 
 - Edit the `examples-config.php` file in this folder to set the `$examples_enabled = true;` variable. The examples

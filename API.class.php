@@ -478,7 +478,7 @@ class API
         $form_id = isset($_SESSION[$namespace]["form_tools_form_id"]) ? $_SESSION[$namespace]["form_tools_form_id"] : "";
         $submission_id = isset($_SESSION[$namespace]["form_tools_submission_id"]) ? $_SESSION[$namespace]["form_tools_submission_id"] : "";
 
-        while (list($key, $value) = each($params["form_data"])) {
+        foreach ($params["form_data"] as $key => $value) {
             if (preg_match("/form_tools_delete_image_field__(.*)$/", $key, $matches)) {
                 $file_field_to_delete = $matches[1];
                 $is_deleting_file = true;
@@ -544,7 +544,7 @@ class API
         // sessions to emulate
         if ($form_id == "test" || $submission_id == "test") {
             reset($form_data);
-            while (list($field_name, $value) = each($form_data)) {
+            foreach ($form_data as $field_name => $value) {
                 $_SESSION[$namespace][$field_name] = $value;
             }
         } else {
@@ -558,7 +558,7 @@ class API
                 }
 
                 reset($form_data);
-                while (list($field_name, $value) = each($form_data)) {
+				foreach ($form_data as $field_name => $value) {
                     $_SESSION[$namespace][$field_name] = $value;
                 }
             }
@@ -624,7 +624,8 @@ class API
                 // now examine the contents of the POST/GET submission and get a list of those fields
                 // which we're going to update
                 $valid_form_fields = array();
-                while (list($form_field, $value) = each($form_data)) {
+
+				foreach ($form_data as $form_field => $value) {
                     if (array_key_exists($form_field, $custom_form_fields)) {
                         $curr_form_field = $custom_form_fields[$form_field];
                         $cleaned_value = $value;
@@ -706,7 +707,7 @@ class API
 
                 // store all the info in sessions
                 reset($form_data);
-                while (list($field_name, $value) = each($form_data)) {
+				foreach ($form_data as $field_name => $value) {
                     $_SESSION[$namespace][$field_name] = $value;
                 }
             }
@@ -997,7 +998,7 @@ class API
         );
 
         $columns_to_update = array();
-        while (list($key, $value) = each($info)) {
+		foreach ($info as $key => $value) {
             // if something passed by the user isn't a valid column name, ignore it
             if (!in_array($key, $valid_columns)) {
                 continue;
@@ -1176,18 +1177,18 @@ END;
     }
 
 
-    /**
-     * This function checks to see if a submission is unique - based on whatever criteria you require
-     * for your test case.
-     *
-     * @param integer $form_id
-     * @param array $criteria a hash of whatever criteria is need to denote uniqueness, where the key is the
-     *   database column name and the value is the current value being tested. For instance, if you wanted to check
-     *   that no-one has submitted a form with a particular email address, you could pass
-     *   array("email" => "myemail@whatever.com) as the second parameter (where "email" is the database column name).
-     * @param integer $current_submission_id if this value is set, the function ignores that submission when doing
-     *   a comparison.
-     */
+	/**
+	 * This function checks to see if a submission is unique - based on whatever criteria you require
+	 * for your test case.
+	 * @param $form_id
+	 * @param $criteria a hash of whatever criteria is need to denote uniqueness, where the key is the
+	 *   database column name and the value is the current value being tested. For instance, if you wanted to check
+	 *   that no-one has submitted a form with a particular email address, you could pass
+	 *   array("email" => "myemail@whatever.com) as the second parameter (where "email" is the database column name).
+	 * @param string $current_submission_id if this value is set, the function ignores that submission when doing
+	 *   a comparison.
+	 * @return array|bool
+	 */
     public function checkSubmissionIsUnique($form_id, $criteria, $current_submission_id = "")
     {
         $db = Core::$db;
@@ -1203,7 +1204,8 @@ END;
 
         $where_clauses = array();
         $placeholders = array();
-        while (list($col_name, $value) = each($criteria)) {
+
+		foreach ($criteria as $col_name => $value) {
             if (empty($col_name)) {
                 return self::processError(552);
             }
