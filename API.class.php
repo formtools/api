@@ -1181,7 +1181,7 @@ END;
 	 * This function checks to see if a submission is unique - based on whatever criteria you require
 	 * for your test case.
 	 * @param $form_id
-	 * @param $criteria a hash of whatever criteria is need to denote uniqueness, where the key is the
+	 * @param $criteria array - hash of whatever criteria is need to denote uniqueness, where the key is the
 	 *   database column name and the value is the current value being tested. For instance, if you wanted to check
 	 *   that no-one has submitted a form with a particular email address, you could pass
 	 *   array("email" => "myemail@whatever.com) as the second parameter (where "email" is the database column name).
@@ -1224,6 +1224,7 @@ END;
         }
 
         $where_clause_str = "WHERE " . join(" AND ", $where_clauses);
+
         try {
             $db->query("
                 SELECT count(*)
